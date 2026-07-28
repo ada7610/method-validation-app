@@ -1,5 +1,4 @@
 import io
-import numpy as np
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -11,7 +10,7 @@ import streamlit as st
 # 📊 دالة إنشاء ملف Excel المنسق بدوال ومعادلات تفاعلية
 # ==========================================
 def generate_validation_excel(
-    calib_df, level1_df, test_title, unit_str, target_conc
+    calib_df, level1_df, test_title, unit_str, target_conc, t_val
 ):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -80,6 +79,15 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "E3")
 
+    # Spiked Level و t-value قبل جدول العينات
+    ws["A15"] = "t-value (t-test)"
+    ws["A15"].font = font_bold
+    ws["B15"] = float(t_val)
+
+    ws["A16"] = "Spiked Level"
+    ws["A16"].font = font_bold
+    ws["B16"] = float(target_conc)
+
     # 4. جدول Level 1 (العينات)
     ws.merge_cells("A17:D17")
     ws["A17"] = f"Level 1 ({unit_str})"
@@ -104,18 +112,15 @@ def generate_validation_excel(
     for idx, row in level1_df.iterrows():
         r = idx + start_sample_row
         ws[f"A{r}"] = str(row.get("Sample Name", ""))
-        sample_area = float(row.get("Area", 0))
 
-        # 🧮 معادلات الإكسل الديناميكية للعينات
-        # Concentration = (Area - Intercept) / Slope
-        ws[f"B{r}"] = (
-            f"=({sample_area}-INTERCEPT(B$6:B${max_cal_row}, A$6:A${max_cal_row}))/SLOPE(B$6:B${max_cal_row}, A$6:A${max_cal_row})"
-        )
+        # التركيز المُدخل مباشرة
+        sample_conc = float(row.get("Concentration", 0))
+        ws[f"B{r}"] = sample_conc
 
-        # Recovery = (Calculated Conc / Target Conc) * 100
-        ws[f"C{r}"] = f"=(B{r}/{target_conc})*100"
+        # معادلة Recovery = (Concentration / Spiked Level) * 100
+        ws[f"C{r}"] = f"=(B{r}/B16)*100"
 
-        # Outlier (Z-Score) = ABS(Conc - Mean) / SD
+        # معادلة Outlier (Z-Score)
         ws[f"D{r}"] = (
             f"=IF(STDEV.S(B$19:B$24)=0, 0, ABS(B{r}-AVERAGE(B$19:B$24))/STDEV.S(B$19:B$24))"
         )
@@ -140,14 +145,8 @@ def generate_validation_excel(
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
         ("RSD %", f"=(B28/B26)*100"),
-        (
-            "LOD",
-            f"=3.3*(B28/SLOPE(B6:B{max_cal_row}, A6:A{max_cal_row}))",
-        ),  # 3.3 * SD / Slope
-        (
-            "LOQ",
-            f"=10*(B28/SLOPE(B6:B{max_cal_row}, A6:A{max_cal_row}))",
-        ),  # 10 * SD / Slope
+        ("LOD", f"=B15*B28"),  # t-value * Standard Deviation
+        ("LOQ", f"=10*B28"),  # 10 * Standard Deviation
     ]
 
     for i, (label, formula) in enumerate(stats_labels, start=26):
@@ -233,15 +232,26 @@ st.divider()
 # 2. جدول العينات (Level 1)
 # ------------------------------------------
 st.subheader("📋 جدول العينات (Level 1)")
-target_conc = st.number_input("التركيز المستهدف (Spiked Conc)", value=4.00)
+
+col_input1, col_input2 = st.columns(2)
+with col_input1:
+    target_conc = st.number_input(
+        "مستوى الإضافة (Spiked Level / Conc)", value=4.00, min_value=0.01
+    )
+with col_input2:
+    t_val = st.number_input(
+        "قيمة t-statistic (لحسبة LOD)",
+        value=2.571,
+        help="القيمة الافتراضية 2.571 تتوافق مع n=6 و 95% confidence level",
+    )
 
 default_samples = [
-    {"Sample Name": "LO level A-1", "Area": 17.58},
-    {"Sample Name": "LO level A-2", "Area": 17.03},
-    {"Sample Name": "LO level A-3", "Area": 16.07},
-    {"Sample Name": "LO level A-4", "Area": 16.07},
-    {"Sample Name": "LO level A-5", "Area": 17.41},
-    {"Sample Name": "LO level A-6", "Area": 16.86},
+    {"Sample Name": "LO level A-1", "Concentration": 3.85},
+    {"Sample Name": "LO level A-2", "Concentration": 3.72},
+    {"Sample Name": "LO level A-3", "Concentration": 3.51},
+    {"Sample Name": "LO level A-4", "Concentration": 3.51},
+    {"Sample Name": "LO level A-5", "Concentration": 3.81},
+    {"Sample Name": "LO level A-6", "Concentration": 3.68},
 ]
 
 edited_samples = st.data_editor(
@@ -268,7 +278,8 @@ try:
         level1_df=edited_samples,
         test_title=test_name if test_name else "Aflatoxins B1",
         unit_str=conc_unit if conc_unit else "ng/mL",
-        target_conc=target_conc if target_conc > 0 else 1.0,
+        target_conc=target_conc,
+        t_val=t_val,
     )
 
     st.download_button(
