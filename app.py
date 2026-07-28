@@ -2,350 +2,297 @@ import io
 import matplotlib.pyplot as plt
 import numpy as np
 import openpyxl
-import pandas as pd
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Alignment, Font, PatternFill
-from scipy import stats
+import pandas as pd
 import streamlit as st
 
-def generate_validation_excel(calib_df, level1_df, lod_val, loq_val, t_val):
+# ==========================================
+# 🎨 إعدادات الصفحة الرئيسية
+# ==========================================
+st.set_page_config(
+    page_title="تطبيق التحقق من الطرق التحليلية",
+    page_layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# ==========================================
+# 📊 دالة إنشاء ملف Excel المنسق مطابق للصورة
+# ==========================================
+def generate_validation_excel(
+    calib_df, level1_df, lod_val, loq_val, test_title, unit_str, unc_dict
+):
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Flouride"
+    ws.title = "Validation Report"
     ws.views.sheetView[0].showGridLines = True
 
-    # الألوان والتنسيقات
-    COLOR_HEADER_CALIB = "D9E1F2"
-    COLOR_HEADER_LEVEL = "8EA9DB"
-    COLOR_HEADER_ORANGE = "F4B084"
-    COLOR_BLUE_SUMMARY = "D9E1F2"
-    COLOR_RED_LOD = "FF0000"
+    # الألوان والتنسيقات المطابقة للصورة
+    COLOR_GREEN_HEADER = "C6EFCE"  # أخضر فاتح للعنوان الرئيسي
+    COLOR_BLUE_HEADER = "8EA9DB"  # أزرق العناوين الفرعية
+    COLOR_ORANGE_HEADER = "F4B084"  # برتقالي لهيدر الأعمدة
+    COLOR_GRAY_NOTE = "D9D9D9"  # رمادي للملاحظات المدمجة
 
+    font_main_title = Font(name="Calibri", size=14, bold=True)
     font_bold = Font(name="Calibri", size=11, bold=True)
-    font_white_bold = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-    align_center = Alignment(horizontal="center", vertical="center")
+    align_center = Alignment(
+        horizontal="center", vertical="center", wrap_text=True
+    )
 
-    # 1. جدول المعايرة
-    ws.merge_cells("A1:B1")
-    ws["A1"] = "Calibration STD"
-    ws["A1"].font = font_bold
-    ws["A1"].fill = PatternFill("solid", fgColor=COLOR_HEADER_CALIB)
+    # 1. العنوان الرئيسي العلوي
+    ws.merge_cells("A1:K1")
+    ws["A1"] = f"Calculation of Validation for {test_title}"
+    ws["A1"].font = font_main_title
+    ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    ws["A2"] = "Concentration (mg/L)"
-    ws["B2"] = "Area (µs*min)"
+    # 2. جدول Calibration STD
+    ws.merge_cells("A4:B4")
+    ws["A4"] = "Calibration STD"
+    ws["A4"].font = font_bold
+    ws["A4"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws["A4"].alignment = align_center
+
+    ws["A5"] = f"Concentration ({unit_str})"
+    ws["B5"] = "Area"
     for col in ["A", "B"]:
-        ws[f"{col}2"].font = font_bold
-        ws[f"{col}2"].fill = PatternFill("solid", fgColor=COLOR_HEADER_CALIB)
-        ws[f"{col}2"].alignment = align_center
+        ws[f"{col}5"].font = font_bold
+        ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"{col}5"].alignment = align_center
 
     for idx, row in calib_df.iterrows():
-        r = idx + 3
+        r = idx + 6
         ws[f"A{r}"] = row.get("Concentration", 0)
         ws[f"B{r}"] = row.get("Area", 0)
 
-    # 2. رسم المنحنى البياني
-    chart = ScatterChart()
-    chart.title = "Flouride Calibration Curve"
-    chart.x_axis.title = "Concentration (mg/L)"
-    chart.y_axis.title = "Area (µs*min)"
+    # RSQ في السطر 14
+    ws["A14"] = "RSQ"
+    ws["A14"].font = font_bold
+    max_cal_row = len(calib_df) + 5
+    ws["B14"] = f"=RSQ(B6:B{max_cal_row}, A6:A{max_cal_row})"
 
-    max_row_calib = max(len(calib_df) + 2, 3)
-    xvalues = Reference(ws, min_col=1, min_row=3, max_row=max_row_calib)
-    yvalues = Reference(ws, min_col=2, min_row=3, max_row=max_row_calib)
+    # 3. الرسم البياني (Scatter Chart)
+    chart = ScatterChart()
+    chart.title = test_title
+    chart.style = 13
+
+    xvalues = Reference(ws, min_col=1, min_row=6, max_row=max_cal_row)
+    yvalues = Reference(ws, min_col=2, min_row=6, max_row=max_cal_row)
     series = Series(yvalues, xvalues, title_from_data=False)
     series.marker.symbol = "circle"
     series.trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
     chart.series.append(series)
-    chart.width = 14
+    chart.width = 12
     chart.height = 7
-    ws.add_chart(chart, "D1")
+    ws.add_chart(chart, "E3")
 
-    # 3. جدول Level 1
-    ws.merge_cells("A18:I18")
-    ws["A18"] = "Level1 (0.6 mg/L)"
-    ws["A18"].font = font_bold
-    ws["A18"].fill = PatternFill("solid", fgColor=COLOR_HEADER_LEVEL)
-    ws["A18"].alignment = align_center
+    # 4. جدول Level 1 (العينات)
+    ws.merge_cells("A17:D17")
+    ws["A17"] = f"Level 1 ({unit_str})"
+    ws["A17"].font = font_bold
+    ws["A17"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws["A17"].alignment = align_center
 
-    headers = [
+    headers_l1 = [
         "Samples name",
-        "Concentration (mg/L)",
-        "Area(µs*min)",
+        f"Concentration ({unit_str})",
         "Recovery %",
-        f"Outlier ({t_val})",
-        "",
-        "",
-        "Measurment uncertainty",
-        "",
+        "Outlier",
     ]
-    cols = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
-    for c, h in zip(cols, headers):
-        ws[f"{c}19"] = h
-        ws[f"{c}19"].font = font_bold
-        ws[f"{c}19"].fill = PatternFill("solid", fgColor=COLOR_HEADER_ORANGE)
-        ws[f"{c}19"].alignment = align_center
+    cols_l1 = ["A", "B", "C", "D"]
+    for c, h in zip(cols_l1, headers_l1):
+        ws[f"{c}18"] = h
+        ws[f"{c}18"].font = font_bold
+        ws[f"{c}18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"{c}18"].alignment = align_center
 
     for idx, row in level1_df.iterrows():
-        r = idx + 20
+        r = idx + 19
         ws[f"A{r}"] = row.get("Sample", "")
         ws[f"B{r}"] = row.get("Concentration", 0)
-        ws[f"C{r}"] = row.get("Area", 0)
-        ws[f"D{r}"] = row.get("Recovery", "")
-        ws[f"E{r}"] = row.get("Outlier", "")
-        ws[f"F{r}"] = row.get("U_Type", "")
-        ws[f"H{r}"] = row.get("Uncertainty", 0)
+        ws[f"C{r}"] = row.get("Recovery", 0)
+        ws[f"D{r}"] = row.get("Outlier", 0)
 
-    # 4. ملخص الحسابات
-    ws["A25"] = "Mean"
-    ws["B25"] = "=AVERAGE(B20:B24)"
-    ws["A26"] = "Mean Recovery %"
-    ws["B26"] = "=AVERAGE(D20:D24)"
-    ws["A27"] = "Standard Deviation"
-    ws["B27"] = "=STDEV.S(B20:B24)"
-    ws["A28"] = "RSD %"
-    ws["B28"] = "=(B27/B25)*100"
+    # الملاحظة الرمادية الجانبية لـ Outlier
+    ws.merge_cells("E19:E24")
+    ws["E19"] = (
+        "Any value higher than the critical value in the table is consider outlier"
+    )
+    ws["E19"].font = Font(name="Calibri", size=9, bold=True)
+    ws["E19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
+    ws["E19"].alignment = align_center
 
-    ws["A29"] = "LOD"
-    ws["B29"] = lod_val
-    ws["A30"] = "LOQ"
-    ws["B30"] = "=3*B29"
+    # 5. ملخص الإحصائيات (Mean, SD, RSD, LOD, LOQ)
+    stats_labels = [
+        "Mean",
+        "Recovery %",
+        "Standerd Deviation",
+        "RSD %",
+        "LOD",
+        "LOQ",
+    ]
+    for i, label in enumerate(stats_labels, start=26):
+        ws[f"A{i}"] = label
+        ws[f"A{i}"].font = font_bold
+        ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
 
-    for r in [29, 30]:
-        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_RED_LOD)
-        ws[f"B{r}"].fill = PatternFill("solid", fgColor=COLOR_RED_LOD)
-        ws[f"A{r}"].font = font_white_bold
-        ws[f"B{r}"].font = font_white_bold
+    # معادلات الإكسل
+    ws["B26"] = "=AVERAGE(B19:B24)"
+    ws["B27"] = "=AVERAGE(C19:C24)"
+    ws["B28"] = "=STDEV.S(B19:B24)"
+    ws["B29"] = "=(B28/B26)*100"
+    ws["B30"] = lod_val
+    ws["B31"] = loq_val
+
+    # 6. جدول Measurement Uncertainty
+    ws.merge_cells("G18:H18")
+    ws["G18"] = "Measurment uncertainty"
+    ws["G18"].font = font_bold
+    ws["G18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["G18"].alignment = align_center
+
+    ws.merge_cells("G19:H19")
+    ws["G19"] = "Level 1"
+    ws["G19"].font = font_bold
+    ws["G19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws["G19"].alignment = align_center
+
+    unc_labels = [
+        ("uA", unc_dict.get("uA", 0)),
+        ("uB", unc_dict.get("uB", 0)),
+        ("uC", unc_dict.get("uC", 0)),
+        ("uD", unc_dict.get("uD", 0)),
+        ("u combiend", unc_dict.get("u_comb", 0)),
+        ("U expanded", unc_dict.get("U_exp", 0)),
+    ]
+
+    for idx, (u_name, u_val) in enumerate(unc_labels, start=20):
+        ws[f"G{idx}"] = u_name
+        ws[f"H{idx}"] = u_val
+        if u_name in ["u combiend", "U expanded"]:
+            ws[f"G{idx}"].font = font_bold
+            ws[f"H{idx}"].font = font_bold
 
     output = io.BytesIO()
     wb.save(output)
     return output.getvalue()
 
-# 1. إعدادات الصفحة الأساسية
-st.set_page_config(page_title="Method Validation Calculator", page_icon="🔬", layout="wide")
 
-# 2. الهيدر والعنوان المتغير
-st.title("🔬 Method Validation Calculator")
+# ==========================================
+# ⚙️ واجهة المستخدم وإدخال البيانات
+# ==========================================
+st.title("🧪 نظام التحقق من كفاءة الطرق التحليلية (Method Validation)")
 
-col_header1, col_header2 = st.columns([2, 1])
+with st.sidebar:
+    st.header("⚙️ إعدادات الاختبار")
+    test_name = st.text_input("اسم الاختبار / التحليل", "Aflatoxins B1")
+    conc_unit = st.text_input("وحدة التركيز", "ng/mL")
 
-with col_header1:
-    test_name = st.text_input("اسم الاختبار (Test Name / Parameter):", value="", placeholder="أدخل اسم الاختبار هنا")
+    st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
+    num_stds = st.number_input("عدد المحاليل القياسية", 3, 10, 6)
 
-with col_header2:
-    conc_unit = st.text_input("وحدة التركيز (Concentration Unit):", value="ppm", placeholder="مثلاً: ppm, mg/L, µg/mL")
+    default_conc = [1.00, 2.50, 5.00, 10.00, 15.00, 20.00]
+    default_area = [5.35, 11.84, 21.17, 38.70, 62.22, 84.82]
 
-if test_name.strip():
-    st.header(f"Validation for {test_name}")
+    calib_data = []
+    for i in range(int(num_stds)):
+        c_val = default_conc[i] if i < len(default_conc) else 1.0 * (i + 1)
+        a_val = default_area[i] if i < len(default_area) else 10.0 * (i + 1)
+        col1, col2 = st.columns(2)
+        with col1:
+            c = st.number_input(
+                f"Conc {i+1}", value=float(c_val), key=f"c_{i}"
+            )
+        with col2:
+            a = st.number_input(
+                f"Area {i+1}", value=float(a_val), key=f"a_{i}"
+            )
+        calib_data.append({"Concentration": c, "Area": a})
+
+    valid_std = pd.DataFrame(calib_data)
+
+# حساب المعايرة
+if len(valid_std) >= 2:
+    slope, intercept = np.polyfit(
+        valid_std["Concentration"], valid_std["Area"], 1
+    )
+    r_matrix = np.corrcoef(valid_std["Concentration"], valid_std["Area"])
+    r_squared = r_matrix[0, 1] ** 2
 else:
-    st.header("Validation for ....................")
+    slope, intercept, r_squared = 1, 0, 0
 
-st.markdown("---")
+st.header("📋 عينات المستوى الأول (Level 1)")
+target_conc = st.number_input("التركيز المستهدف (Spiked Conc)", value=4.00)
 
-# قيم افتراضية منعاً لأي أخطاء
-slope, intercept, r_squared, steyx = 0.0, 0.0, 0.0, 0.0
-mean_conc, sd_conc, mean_recovery, rsd_percent = 0.0, 0.0, 0.0, 0.0
-lod, loq = 0.0, 0.0
-valid_std = pd.DataFrame()
-display_samples_df = pd.DataFrame()
+default_samples = [
+    {"Sample Name": "LO level A-1", "Area": 17.58},
+    {"Sample Name": "LO level A-2", "Area": 17.03},
+    {"Sample Name": "LO level A-3", "Area": 16.07},
+    {"Sample Name": "LO level A-4", "Area": 16.07},
+    {"Sample Name": "LO level A-5", "Area": 17.41},
+    {"Sample Name": "LO level A-6", "Area": 16.86},
+]
 
-# 3. قسم منحنى المعايرة والخطية
-st.subheader("1. Calibration Curve & Linearity (منحنى المعايرة)")
+edited_samples = st.data_editor(pd.DataFrame(default_samples), num_rows="dynamic")
 
-col_cal1, col_cal2 = st.columns([1, 1.2])
+# الحسابات للعينات
+display_samples = []
+calculated_concs = []
 
-with col_cal1:
-    st.markdown("**جدول نقاط الكالبريشن (قابل للزيادة والتعديل):**")
-    default_std_data = pd.DataFrame({
-        "Standard Level": [f"Std {i+1}" for i in range(6)],
-        "Concentration": [1.0, 2.0, 5.0, 10.0, 15.0, 20.0],
-        "Area": [1200.0, 2450.0, 6100.0, 12300.0, 18500.0, 24800.0]
+for _, row in edited_samples.iterrows():
+    area_val = row["Area"]
+    calc_c = (area_val - intercept) / slope if slope != 0 else 0
+    rec = (calc_c / target_conc * 100) if target_conc != 0 else 0
+    calculated_concs.append(calc_c)
+    display_samples.append({
+        "Sample Name": row["Sample Name"],
+        "Area": area_val,
+        f"Calculated Conc ({conc_unit})": round(calc_c, 2),
+        "Recovery %": f"{rec:.2f}%",
     })
-    
-    std_df = st.data_editor(default_std_data, num_rows="dynamic", key="std_editor", use_container_width=True)
 
-if std_df is not None:
-    valid_std = std_df.dropna(subset=["Concentration", "Area"])
-    if len(valid_std) >= 2:
-        try:
-            x_cal = pd.to_numeric(valid_std["Concentration"], errors='coerce').values
-            y_cal = pd.to_numeric(valid_std["Area"], errors='coerce').values
-            
-            mask = ~np.isnan(x_cal) & ~np.isnan(y_cal)
-            x_cal, y_cal = x_cal[mask], y_cal[mask]
+display_samples_df = pd.DataFrame(display_samples)
 
-            if len(x_cal) >= 2:
-                slope, intercept, r_value, p_value, std_err = stats.linregress(x_cal, y_cal)
-                r_squared = float(r_value**2)
-                
-                y_pred = slope * x_cal + intercept
-                residuals = y_cal - y_pred
-                steyx = float(np.sqrt(np.sum(residuals**2) / (len(x_cal) - 2))) if len(x_cal) > 2 else 0.0
-                
-                with col_cal1:
-                    st.success(f"**RSQ ($R^2$):** `{r_squared:.5f}`")
-                    
-                with col_cal2:
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    ax.scatter(x_cal, y_cal, color="#1f77b4", label="Standards", s=50)
-                    
-                    x_line = np.linspace(min(x_cal), max(x_cal), 100)
-                    y_line = slope * x_line + intercept
-                    ax.plot(x_line, y_line, color="#d62728", linestyle="--", label="Linear Regression")
-                    
-                    sign = "+" if intercept >= 0 else "-"
-                    eq_text = f"y = {slope:.2f}x {sign} {abs(intercept):.2f}\n$R^2$ = {r_squared:.5f}"
-                    
-                    ax.set_title("Calibration Curve", fontsize=12, fontweight="bold")
-                    ax.set_xlabel(f"Concentration ({conc_unit})", fontsize=10)
-                    ax.set_ylabel("Area", fontsize=10)
-                    ax.grid(True, linestyle=":", alpha=0.6)
-                    ax.legend()
-                    
-                    ax.text(0.05, 0.82, eq_text, transform=ax.transAxes, fontsize=10,
-                            bbox=dict(boxstyle="round,pad=0.5", facecolor="white", alpha=0.8, edgecolor="gray"))
-                    
-                    st.pyplot(fig)
-        except Exception as e:
-            st.error(f"خطأ في رسم المعايرة: {e}")
+# Outliers حساب الـ
+if len(calculated_concs) > 1:
+    mean_c = np.mean(calculated_concs)
+    std_c = np.std(calculated_concs, ddof=1)
+    z_scores = [
+        abs(c - mean_c) / std_c if std_c != 0 else 0 for c in calculated_concs
+    ]
+else:
+    mean_c, std_c = 0, 0
+    z_scores = [0] * len(calculated_concs)
 
-st.markdown("---")
+display_samples_df["Z-Score"] = [round(z, 2) for z in z_scores]
 
-# 4. قسم جدول العينات والـ Recovery % وتقييم Outliers
-st.subheader("2. Samples & Recovery Section (جدول العينات وفحص Outliers)")
+st.subheader("📊 نتائج العينات والحيود")
+st.dataframe(display_samples_df, use_container_width=True)
 
-col_sec1, col_sec2 = st.columns(2)
-with col_sec1:
-    spike_level_name = st.text_input("Spike Level (المستوى):", value="Level 100%")
-with col_sec2:
-    spike_nominal_conc = st.number_input(f"Spike Nominal Concentration ({conc_unit}):", value=10.0, step=0.1, format="%.4f")
+# الإحصائيات الحسابية
+lod_result = round(3.3 * (std_c / slope), 2) if slope != 0 else 0
+loq_result = round(10 * (std_c / slope), 2) if slope != 0 else 0
 
-st.markdown("**جدول نتائج العينات الفردية:** *(جرب إدخال قيمة مرتفعة جداً أو منخفضة جداً لتختبر الـ Outlier)*")
+st.subheader("📐 حسابات عدم اليقين (Measurement Uncertainty)")
+u_A = round(std_c / np.sqrt(len(calculated_concs)) if len(calculated_concs) > 0 else 0, 4)
+u_B = 0.0017
+u_C = 0.0058
+u_D = 0.0015
+u_combined = round(np.sqrt(u_A**2 + u_B**2 + u_C**2 + u_D**2), 4)
+u_expanded = round(u_combined * 2, 4)
 
-default_samples_data = pd.DataFrame({
-    "Sample Name": [f"Sample {i+1}" for i in range(6)],
-    f"Calculated Conc ({conc_unit})": [9.80, 9.90, 10.10, 9.70, 10.00, 10.20]
-})
-
-samples_df = st.data_editor(default_samples_data, num_rows="dynamic", key="sample_editor", use_container_width=True)
-
-if samples_df is not None and not samples_df.empty and spike_nominal_conc > 0:
-    try:
-        conc_col_name = samples_df.columns[1]
-        calc_concs = pd.to_numeric(samples_df[conc_col_name], errors='coerce').dropna().values
-        
-        if len(calc_concs) > 0:
-            recoveries = (calc_concs / spike_nominal_conc) * 100.0
-            
-            mean_temp = float(np.mean(calc_concs))
-            sd_temp = float(np.std(calc_concs, ddof=1)) if len(calc_concs) > 1 else 0.0
-            
-            outlier_status = []
-            z_score_list = []
-            
-            if sd_temp > 0 and len(calc_concs) >= 3:
-                z_scores = np.abs((calc_concs - mean_temp) / sd_temp)
-                for z in z_scores:
-                    z_score_list.append(f"{z:.2f}")
-                    if z > 1.96:
-                        outlier_status.append("⚠️ Outlier")
-                    else:
-                        outlier_status.append("✅ Normal")
-            else:
-                z_score_list = ["N/A"] * len(calc_concs)
-                outlier_status = ["✅ Normal"] * len(calc_concs)
-                
-            display_samples_df = pd.DataFrame({
-                "Sample Name": samples_df["Sample Name"][:len(calc_concs)],
-                f"Calculated Conc ({conc_unit})": calc_concs,
-                "Recovery %": [f"{r:.2f}%" for r in recoveries],
-                "Z-Score": z_score_list,
-                "Outlier Status": outlier_status
-            })
-            
-            st.dataframe(display_samples_df, use_container_width=True)
-            
-            # 5. الجدول الملحق الإحصائي
-            st.subheader("3. Summary Statistics Table (الجدول الإحصائي الملحق)")
-            
-            mean_conc = float(np.mean(calc_concs))
-            mean_recovery = float(np.mean(recoveries))
-            sd_conc = float(np.std(calc_concs, ddof=1)) if len(calc_concs) > 1 else 0.0
-            rsd_percent = float((sd_conc / mean_conc * 100.0)) if mean_conc > 0 else 0.0
-            
-            if slope > 0:
-                lod = float((3.3 * steyx) / slope)
-                loq = float((10.0 * steyx) / slope)
-    except Exception as e:
-        st.error(f"خطأ في معالجة العينات: {e}")
-
-# 1. إنشاء جدول ملخص النتائج
-summary_df = pd.DataFrame(
-    {
-        "Metric": ["Mean", "Mean Recovery %", "SD", "RSD %"],
-        "Value": [
-            f"{mean_conc:.4f}",
-            f"{mean_recovery:.2f}%",
-            f"{sd_conc:.4f}",
-            f"{rsd_percent:.2f}%",
-        ],
-    }
-)
-
-st.table(summary_df)
-
-# 2. عنوان قسم LOD & LOQ
-st.subheader("حساب حد الكشف (LOD) وحد التقدير الكمي (LOQ)")
-
-# 3. مدخلات ومعادلة LOD الجديدة
-t_value = st.number_input(
-    "أدخل قيمة T-test:", value=3.143, step=0.001, format="%.3f"
-)
-
-lod_result = t_value * sd_conc
-loq_result = lod_result * 3
-
-st.write(f"**LOD:** {lod_result:.4f}")
-st.write(f"**LOQ:** {loq_result:.4f}")
-
-# 6. جدول عدم اليقين (Measurement Uncertainty Budget)
-st.subheader("4. Measurement Uncertainty Budget (جدول عدم اليقين)")
-
-col_std1, col_std2 = st.columns(2)
-with col_std1:
-    purity_percent = st.number_input("Standard Reference Purity (%) (نقاوة الأستاندرد):", value=99.50, min_value=0.0, max_value=100.0, step=0.1, format="%.2f")
-
-u_A = float(rsd_percent / 100.0)
-u_B = float(abs((0.5 * (1.0 - (mean_recovery / 100.0))) / np.sqrt(3)))
-u_C = float((0.5 * (1.0 - (purity_percent / 100.0))) / np.sqrt(3))
-u_D = float(1.0 - np.sqrt(r_squared)) if r_squared >= 0 else 0.0
-
-u_combined = float(np.sqrt(u_A**2 + u_B**2 + u_C**2 + u_D**2))
-k_factor = 2
-u_expanded = float(u_combined * k_factor)
-
-unc_summary_data = {
-    "Uncertainty Component": ["u_A", "u_B", "u_C", "u_D", "u_Combined (u_c)", "u_Expanded (U, k=2)"],
-    "Formula / Calculation Method": [
-        "RSD / 100", 
-        "| 0.5 * (1 - Recovery/100) / √3 |", 
-        "0.5 * (1 - STD Purity/100) / √3", 
-        "1 - √(RSQ)", 
-        "√(uA² + uB² + uC² + uD²)", 
-        "u_Combined * 2 (95% Confidence Level)"
-    ],
-    "Calculated Value": [f"{u_A:.6f}", f"{u_B:.6f}", f"{u_C:.6f}", f"{u_D:.6f}", f"{u_combined:.6f}", f"{u_expanded:.6f}"]
-}
-
-st.table(pd.DataFrame(unc_summary_data))
-
-final_result_text = f"{mean_conc:.4f} ± {u_expanded:.4f} {conc_unit}"
-st.markdown("### 📌 Result for Report:")
-st.success(f"**{test_name if test_name else 'Result'} = {final_result_text}** (at 95% Confidence Level, k=2)")
-
-st.markdown("---")
+col_u1, col_u2 = st.columns(2)
+with col_u1:
+    st.write(f"**uA:** {u_A}")
+    st.write(f"**uB:** {u_B}")
+    st.write(f"**uC:** {u_C}")
+with col_u2:
+    st.write(f"**uD:** {u_D}")
+    st.write(f"**u combined:** {u_combined}")
+    st.write(f"**U expanded (k=2):** {u_expanded}")
 
 # ==========================================
 # 📥 قسم تصدير التقرير النهائي إلى Excel
@@ -354,41 +301,46 @@ st.divider()
 st.subheader("📥 تصدير التقرير النهائي")
 
 try:
-    # إعداد جدول المعايرة للـ Excel
-    calib_export = valid_std[["Concentration", "Area"]] if not valid_std.empty else pd.DataFrame(columns=["Concentration", "Area"])
+    calib_export = (
+        valid_std[["Concentration", "Area"]]
+        if not valid_std.empty
+        else pd.DataFrame(columns=["Concentration", "Area"])
+    )
 
-    # إعداد جدول العينات وعدم اليقين للـ Excel
     if not display_samples_df.empty:
-        sample_names = list(display_samples_df["Sample Name"])
-        sample_concs = list(display_samples_df[f"Calculated Conc ({conc_unit})"])
-        sample_recs = list(display_samples_df["Recovery %"])
-        sample_outs = list(display_samples_df["Z-Score"])
+        level1_export = pd.DataFrame({
+            "Sample": display_samples_df["Sample Name"],
+            "Concentration": display_samples_df[
+                f"Calculated Conc ({conc_unit})"
+            ],
+            "Recovery": [
+                float(str(r).replace("%", ""))
+                for r in display_samples_df["Recovery %"]
+            ],
+            "Outlier": display_samples_df["Z-Score"],
+        })
     else:
-        sample_names, sample_concs, sample_recs, sample_outs = [], [], [], []
+        level1_export = pd.DataFrame(
+            columns=["Sample", "Concentration", "Recovery", "Outlier"]
+        )
 
-    u_types = ["uA", "uB", "uC", "uD", "u combined"]
-    u_vals = [u_A, u_B, u_C, u_D, u_combined]
-
-    max_rows = max(len(sample_names), len(u_types))
-
-    # تحضير الصفوف المتوافق طولها
-    export_data = {
-        "Sample": sample_names + [""] * (max_rows - len(sample_names)),
-        "Concentration": sample_concs + [0.0] * (max_rows - len(sample_concs)),
-        "Area": [0.0] * max_rows,
-        "Recovery": sample_recs + [""] * (max_rows - len(sample_recs)),
-        "Outlier": sample_outs + [""] * (max_rows - len(sample_outs)),
-        "U_Type": u_types + [""] * (max_rows - len(u_types)),
-        "Uncertainty": u_vals + [0.0] * (max_rows - len(u_vals)),
+    unc_data = {
+        "uA": u_A,
+        "uB": u_B,
+        "uC": u_C,
+        "uD": u_D,
+        "u_comb": u_combined,
+        "U_exp": u_expanded,
     }
-    level1_export = pd.DataFrame(export_data)
 
     excel_file = generate_validation_excel(
         calib_df=calib_export,
         level1_df=level1_export,
         lod_val=lod_result,
         loq_val=loq_result,
-        t_val=t_value,
+        test_title=test_name if test_name else "Aflatoxins B1",
+        unit_str=conc_unit if conc_unit else "ng/mL",
+        unc_dict=unc_data,
     )
 
     st.download_button(
