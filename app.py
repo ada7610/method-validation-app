@@ -161,13 +161,8 @@ def generate_validation_excel(
     ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws["F19"].alignment = align_center
 
-    # 5. ملخص الإحصائيات مع موقع الخانات بالظبط
-    # B26: Mean
-    # B27: Recovery %
-    # B28: Standard Deviation
-    # B29: RSD %
-    # B30: LOD
-    # B31: LOQ
+    # 5. ملخص الإحصائيات
+    # B26: Mean, B27: Recovery %, B28: Standard Deviation, B29: RSD %, B30: LOD, B31: LOQ
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -186,7 +181,7 @@ def generate_validation_excel(
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
 
-    # 6. جدول Measurement Uncertainty الجدید
+    # 6. جدول Measurement Uncertainty
     ws.merge_cells("H18:I18")
     ws["H18"] = "Measurment uncertainty"
     ws["H18"].font = font_bold
@@ -199,24 +194,18 @@ def generate_validation_excel(
     ws["H19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws["H19"].alignment = align_center
 
-    # حفظ قيمة Standard Purity في خلية مخصصة للرجوع إليها في المعادلة (مثلاً I17)
+    # حفظ Standard Purity
     ws["H17"] = "Standard Purity"
     ws["H17"].font = font_bold
-    purity_val = (
-        std_purity / 100.0 if std_purity > 1.0 else std_purity
-    )  # التحويل لنسبة عشرية إن أدخلت كمئوية
+    purity_val = std_purity / 100.0 if std_purity > 1.0 else std_purity
     ws["I17"] = purity_val
 
-    # المعادلات الجديدة المحسوبة تلقائياً:
-    # uA = RSD% / 100 -> (B29/100)
-    # uB = 0.5 * (1 - (Recovery%/100)) / SQRT(3) -> 0.5*(1 - (B27/100))/SQRT(3)
-    # uC = 0.5 * (1 - Purity) / SQRT(3) -> 0.5*(1 - I17)/SQRT(3)
-    # uD = 1 - SQRT(RSQ) -> 1 - SQRT(B14)
+    # المعادلات الخاصة بـ Measurement Uncertainty
     unc_labels = [
         ("uA", "=B29/100"),
         ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
         ("uC", "=0.5*(1 - I17)/SQRT(3)"),
-        ("uD", "=1 - SQRT(B14)"),
+        ("uD", "=1 - SQRT(B14)"),  # معادلة uD المبنية على 1 - SQRT(RSQ)
         ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
         ("U expanded", "=2*I24"),
     ]
