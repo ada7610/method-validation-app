@@ -5,9 +5,32 @@ from openpyxl.styles import Alignment, Font, PatternFill
 import pandas as pd
 import streamlit as st
 
+# ==========================================
+# 🎨 إعدادات الصفحة والشريط الجانبي (الحقوق في البرنامج)
+# ==========================================
+st.set_page_config(
+    page_title="Method Validation System | Abdulrahman Alamri",
+    page_icon="🧪",
+    layout="wide",
+)
+
+# 👈 الحقوق في الشريط الجانبي (Sidebar)
+with st.sidebar:
+    st.header("👑 Developer Info")
+    st.markdown("""
+    **Developed & Designed By:**  
+    👨‍🔬 **Abdulrahman Alamri**  
+    
+    **Specialization:**  
+    🔬 Quality Control & Method Validation Specialist  
+    
+    ---
+    *All Rights Reserved © 2026*
+    """)
+
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق بدوال ومعادلات تفاعلية
+# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -18,10 +41,10 @@ def generate_validation_excel(
     ws.views.sheetView[0].showGridLines = True
 
     # الألوان والتنسيقات
-    COLOR_GREEN_HEADER = "C6EFCE"  # أخضر فاتح للعنوان الرئيسي
-    COLOR_BLUE_HEADER = "8EA9DB"  # أزرق العناوين الفرعية
-    COLOR_ORANGE_HEADER = "F4B084"  # برتقالي لهيدر الأعمدة
-    COLOR_GRAY_NOTE = "D9D9D9"  # رمادي للملاحظات المدمجة
+    COLOR_GREEN_HEADER = "C6EFCE"
+    COLOR_BLUE_HEADER = "8EA9DB"
+    COLOR_ORANGE_HEADER = "F4B084"
+    COLOR_GRAY_NOTE = "D9D9D9"
 
     font_main_title = Font(name="Calibri", size=14, bold=True)
     font_bold = Font(name="Calibri", size=11, bold=True)
@@ -57,9 +80,7 @@ def generate_validation_excel(
     for col in ["A", "B", "C"]:
         ws[f"{col}5"].font = font_bold
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{col}5"].alignment = Alignment(
-            horizontal="center", vertical="center", wrap_text=False
-        )
+        ws[f"{col}5"].alignment = align_center
 
     for idx, row in calib_df.iterrows():
         r = idx + 6
@@ -105,14 +126,11 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تطبيق التنسيق على الخانات الثنائية (A: برتقالي، B: بدون لون خلفية)
     for r in [14, 15, 16]:
-        # العمود A (العنوان)
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"A{r}"].alignment = align_left
 
-        # العمود B (القيمة أو المعادلة) - بدون لون خلفية
         ws[f"B{r}"].font = font_bold
         ws[f"B{r}"].fill = PatternFill(fill_type=None)
         ws[f"B{r}"].alignment = align_center
@@ -136,9 +154,7 @@ def generate_validation_excel(
         ws[f"{c}18"] = h
         ws[f"{c}18"].font = font_bold
         ws[f"{c}18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{c}18"].alignment = Alignment(
-            horizontal="center", vertical="center", wrap_text=False
-        )
+        ws[f"{c}18"].alignment = align_center
 
     start_sample_row = 19
     for idx, row in level1_df.iterrows():
@@ -152,13 +168,8 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
-        # Recovery = (Concentration / Spiked Level) * 100
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
-
-        # Outlier = ABS(Concentration - Mean) / SD
         ws[f"D{r}"] = f"=IF(B$28=0, 0, ABS(B{r}-B$26)/B$28)"
-
-        # Outlier Status
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
         ws[f"E{r}"].alignment = align_center
 
@@ -363,3 +374,11 @@ try:
     )
 except Exception as e:
     st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
+
+# ------------------------------------------
+# 🔻 الحقوق في الفوتر (أسفل برنامج Streamlit)
+# ------------------------------------------
+st.caption("---")
+st.caption(
+    "Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026"
+)
