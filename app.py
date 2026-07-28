@@ -10,14 +10,14 @@ import streamlit as st
 # 📊 دالة إنشاء ملف Excel المنسق بدوال ومعادلات تفاعلية
 # ==========================================
 def generate_validation_excel(
-    calib_df, level1_df, test_title, unit_str, target_conc, t_val
+    calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
 ):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
     ws.views.sheetView[0].showGridLines = True
 
-    # الألوان والتنسيقات المطابقة للصورة
+    # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"  # أخضر فاتح للعنوان الرئيسي
     COLOR_BLUE_HEADER = "8EA9DB"  # أزرق العناوين الفرعية
     COLOR_ORANGE_HEADER = "F4B084"  # برتقالي لهيدر الأعمدة
@@ -71,12 +71,12 @@ def generate_validation_excel(
 
     max_cal_row = max(len(calib_df) + 5, 6)
 
-    # RSQ معادلة (B: Concentration, C: Area)
+    # RSQ معادلة (في الخلية B14)
     ws["A14"] = "RSQ"
     ws["A14"].font = font_bold
     ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
 
-    # 3. الرسم البياني (Scatter Chart - B: X-values / C: Y-values)
+    # 3. الرسم البياني (Scatter Chart)
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
     chart.style = 13
@@ -96,7 +96,7 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # Spiked Level و t-value قبل جدول العينات
+    # المدخلات الأساسية
     ws["A15"] = "t-value (t-test)"
     ws["A15"].font = font_bold
     ws["B15"] = float(t_val)
@@ -138,21 +138,21 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
-        # معادلة Recovery = (Concentration / Spiked Level) * 100
+        # Recovery = (Concentration / Spiked Level) * 100
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
 
-        # معادلة Outlier (Z-Score)
+        # Outlier (Z-Score)
         ws[f"D{r}"] = (
             f"=IF(STDEV.S(B$19:B$24)=0, 0, ABS(B{r}-AVERAGE(B$19:B$24))/STDEV.S(B$19:B$24))"
         )
 
-        # معادلة تحديد حالة Outlier
+        # Outlier Status
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
         ws[f"E{r}"].alignment = align_center
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
-    # الملاحظة الرمادية الجانبية لـ Outlier
+    # الملاحظة الرمادية
     ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
@@ -161,7 +161,13 @@ def generate_validation_excel(
     ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws["F19"].alignment = align_center
 
-    # 5. ملخص الإحصائيات مع المعادلات
+    # 5. ملخص الإحصائيات مع موقع الخانات بالظبط
+    # B26: Mean
+    # B27: Recovery %
+    # B28: Standard Deviation
+    # B29: RSD %
+    # B30: LOD
+    # B31: LOQ
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -170,8 +176,8 @@ def generate_validation_excel(
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
         ("RSD %", f"=IF(B26=0, 0, (B28/B26)*100)"),
-        ("LOD", f"=B15*B28"),  # t-value * Standard Deviation
-        ("LOQ", f"=10*B28"),  # 10 * Standard Deviation
+        ("LOD", f"=B15*B28"),
+        ("LOQ", f"=10*B28"),
     ]
 
     for i, (label, formula) in enumerate(stats_labels, start=26):
@@ -180,7 +186,7 @@ def generate_validation_excel(
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
 
-    # 6. جدول Measurement Uncertainty بمعادلات تفاعلية
+    # 6. جدول Measurement Uncertainty الجدید
     ws.merge_cells("H18:I18")
     ws["H18"] = "Measurment uncertainty"
     ws["H18"].font = font_bold
@@ -193,16 +199,26 @@ def generate_validation_excel(
     ws["H19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws["H19"].alignment = align_center
 
+    # حفظ قيمة Standard Purity في خلية مخصصة للرجوع إليها في المعادلة (مثلاً I17)
+    ws["H17"] = "Standard Purity"
+    ws["H17"].font = font_bold
+    purity_val = (
+        std_purity / 100.0 if std_purity > 1.0 else std_purity
+    )  # التحويل لنسبة عشرية إن أدخلت كمئوية
+    ws["I17"] = purity_val
+
+    # المعادلات الجديدة المحسوبة تلقائياً:
+    # uA = RSD% / 100 -> (B29/100)
+    # uB = 0.5 * (1 - (Recovery%/100)) / SQRT(3) -> 0.5*(1 - (B27/100))/SQRT(3)
+    # uC = 0.5 * (1 - Purity) / SQRT(3) -> 0.5*(1 - I17)/SQRT(3)
+    # uD = 1 - SQRT(RSQ) -> 1 - SQRT(B14)
     unc_labels = [
-        (
-            "uA",
-            f"=B28/SQRT(COUNT(B{start_sample_row}:B{end_sample_row}))",
-        ),
-        ("uB", 0.0017),
-        ("uC", 0.0058),
-        ("uD", 0.0015),
+        ("uA", "=B29/100"),
+        ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
+        ("uC", "=0.5*(1 - I17)/SQRT(3)"),
+        ("uD", "=1 - SQRT(B14)"),
         ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
-        ("U expanded", "=I24*2"),
+        ("U expanded", "=2*I24"),
     ]
 
     for idx, (u_name, u_formula) in enumerate(unc_labels, start=20):
@@ -218,7 +234,7 @@ def generate_validation_excel(
 
 
 # ==========================================
-# ⚙️ واجهة المستخدم المبسطة
+# ⚙️ واجهة المستخدم المبسطة (Streamlit UI)
 # ==========================================
 st.title("🧪 نظام التحقق من كفاءة الطرق التحليلية")
 
@@ -235,7 +251,6 @@ st.divider()
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 
-# الترتيب الجديد: Level - Concentration - Area
 default_calib = [
     {"Level": "STD 1", "Concentration": 0.0, "Area": 0.0},
     {"Level": "STD 2", "Concentration": 0.0, "Area": 0.0},
@@ -255,20 +270,28 @@ valid_std = st.data_editor(
 st.divider()
 
 # ------------------------------------------
-# 2. جدول العينات (Level 1)
+# 2. جدول العينات والمدخلات الإضافية
 # ------------------------------------------
-st.subheader("📋 جدول العينات (Level 1)")
+st.subheader("📋 جدول العينات والمدخلات (Level 1)")
 
-col_input1, col_input2 = st.columns(2)
+col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
     target_conc = st.number_input(
-        "مستوى الإضافة (Spiked Level / Conc)", value=0.0, min_value=0.0
+        "مستوى الإضافة (Spiked Level)", value=0.0, min_value=0.0
     )
 with col_input2:
     t_val = st.number_input(
         "قيمة t-statistic (لحسبة LOD)",
         value=0.0,
         help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
+    )
+with col_input3:
+    std_purity = st.number_input(
+        "نقاوة المحلول القياسي (Standard Purity)",
+        value=0.99,
+        min_value=0.0,
+        max_value=100.0,
+        help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
     )
 
 default_samples = [
@@ -306,6 +329,7 @@ try:
         unit_str=conc_unit,
         target_conc=target_conc,
         t_val=t_val,
+        std_purity=std_purity,
     )
 
     st.download_button(
