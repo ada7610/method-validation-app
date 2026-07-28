@@ -28,6 +28,7 @@ def generate_validation_excel(
     align_center = Alignment(
         horizontal="center", vertical="center", wrap_text=True
     )
+    align_left = Alignment(horizontal="left", vertical="center")
 
     # 1. العنوان الرئيسي العلوي
     title_text = (
@@ -97,25 +98,25 @@ def generate_validation_excel(
     ws.add_chart(chart, "F3")
 
     # ------------------------------------------
-    # 📌 تعديل تنسيق ودمج خانات t-value و Spiked Level
+    # 📌 تنسيق خانات t-value و Spiked Level بالشريط البرتقالي بدون أخطاء
     # ------------------------------------------
-    # t-value (توسيع الخلية واللون البرتقالي)
-    ws["A15"] = f"t-value (t-test):  {float(t_val)}"
-    ws.merge_cells("A15:C15")
-    ws["A15"].font = font_bold
-    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A15"].alignment = Alignment(horizontal="left", vertical="center")
-
-    # Spiked Level (توسيع الخلية واللون البرتقالي)
-    ws["A16"] = f"Spiked Level:  {float(target_conc)}"
-    ws.merge_cells("A16:C16")
-    ws["A16"].font = font_bold
-    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A16"].alignment = Alignment(horizontal="left", vertical="center")
-
-    # خلية مخفية لإبقاء المعادلة تعمل بسلاسة في الخلفية بالنسبة للمراجع الإحصائية
+    # row 15: t-value
+    ws["A15"] = "t-value (t-test):"
     ws["B15"] = float(t_val)
+    ws["C15"] = ""
+
+    # row 16: Spiked Level
+    ws["A16"] = "Spiked Level:"
     ws["B16"] = float(target_conc)
+    ws["C16"] = ""
+
+    # تطبيق التنسيق واللون البرتقالي الموحد على الصفوف 15 و 16
+    for r in [15, 16]:
+        for c in ["A", "B", "C"]:
+            cell = ws[f"{c}{r}"]
+            cell.font = font_bold
+            cell.fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+            cell.alignment = align_left
 
     # 4. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
@@ -150,7 +151,7 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
-        # Recovery = (Concentration / Spiked Level) * 100 (B16 تمثل قيمة Spiked Level)
+        # Recovery = (Concentration / Spiked Level) * 100
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
 
         # Outlier = ABS(Concentration - Mean) / SD
@@ -172,7 +173,6 @@ def generate_validation_excel(
     ws["F19"].alignment = align_center
 
     # 5. ملخص الإحصائيات
-    # B26: Mean, B27: Recovery %, B28: Standard Deviation (SD), B29: RSD %, B30: LOD, B31: LOQ
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
