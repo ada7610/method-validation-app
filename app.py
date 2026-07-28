@@ -75,11 +75,6 @@ def generate_validation_excel(
 
     max_cal_row = max(len(calib_df) + 5, 6)
 
-    # RSQ معادلة
-    ws["A14"] = "RSQ"
-    ws["A14"].font = font_bold
-    ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
-
     # 3. الرسم البياني (Scatter Chart)
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
@@ -100,20 +95,26 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 4. خانات t-value و Spiked Level
+    # 4. خانات RSQ و t-value و Spiked Level
+    ws["A14"] = "RSQ"
+    ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
+
     ws["A15"] = "t-value (t test)"
     ws["B15"] = float(t_val)
 
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    for r in [15, 16]:
+    # تطبيق التنسيق على الخانات الثنائية (A: برتقالي، B: بدون لون خلفية)
+    for r in [14, 15, 16]:
+        # العمود A (العنوان)
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"A{r}"].alignment = align_left
 
+        # العمود B (القيمة أو المعادلة) - بدون لون خلفية
         ws[f"B{r}"].font = font_bold
-        ws[f"B{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"B{r}"].fill = PatternFill(fill_type=None)
         ws[f"B{r}"].alignment = align_center
 
     # 5. جدول Level 1 (العينات)
