@@ -2,6 +2,7 @@ import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 import pandas as pd
 import streamlit as st
 
@@ -26,7 +27,7 @@ def generate_validation_excel(
     font_main_title = Font(name="Calibri", size=14, bold=True)
     font_bold = Font(name="Calibri", size=11, bold=True)
     align_center = Alignment(
-        horizontal="center", vertical="center", wrap_text=True
+        horizontal="center", vertical="center", wrap_text=False
     )
     align_left = Alignment(horizontal="left", vertical="center")
 
@@ -42,7 +43,7 @@ def generate_validation_excel(
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    # 2. جدول Calibration STD (A: Level, B: Concentration, C: Area)
+    # 2. جدول Calibration STD
     ws.merge_cells("A4:C4")
     ws["A4"] = "Calibration STD"
     ws["A4"].font = font_bold
@@ -53,10 +54,14 @@ def generate_validation_excel(
     ws["A5"] = "Level"
     ws["B5"] = unit_header
     ws["C5"] = "Area"
+
     for col in ["A", "B", "C"]:
         ws[f"{col}5"].font = font_bold
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{col}5"].alignment = align_center
+        # إلغاء التفاف النص لضمان ظهور كلمة Concentration في سطر واحد
+        ws[f"{col}5"].alignment = Alignment(
+            horizontal="center", vertical="center", wrap_text=False
+        )
 
     for idx, row in calib_df.iterrows():
         r = idx + 6
@@ -98,27 +103,27 @@ def generate_validation_excel(
     ws.add_chart(chart, "F3")
 
     # ------------------------------------------
-    # 📌 تنسيق خانات t-value و Spiked Level بالشريط البرتقالي بدون أخطاء
+    # 📌 4. خانات t-value و Spiked Level منفصلة وواضحة
     # ------------------------------------------
-    # row 15: t-value
-    ws["A15"] = "t-value (t-test):"
+    # t-value (تكون في الخلية A15 والإدخال في B15)
+    ws["A15"] = "t-value (t test)"
     ws["B15"] = float(t_val)
-    ws["C15"] = ""
 
-    # row 16: Spiked Level
-    ws["A16"] = "Spiked Level:"
+    # Spiked Level (تكون في الخلية A16 والإدخال في B16)
+    ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
-    ws["C16"] = ""
 
-    # تطبيق التنسيق واللون البرتقالي الموحد على الصفوف 15 و 16
+    # إضافة التنسيق واللون البرتقالي
     for r in [15, 16]:
-        for c in ["A", "B", "C"]:
-            cell = ws[f"{c}{r}"]
-            cell.font = font_bold
-            cell.fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-            cell.alignment = align_left
+        ws[f"A{r}"].font = font_bold
+        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"A{r}"].alignment = align_left
 
-    # 4. جدول Level 1 (العينات)
+        ws[f"B{r}"].font = font_bold
+        ws[f"B{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"B{r}"].alignment = align_center
+
+    # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
     ws["A17"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
     ws["A17"].font = font_bold
@@ -137,7 +142,9 @@ def generate_validation_excel(
         ws[f"{c}18"] = h
         ws[f"{c}18"].font = font_bold
         ws[f"{c}18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{c}18"].alignment = align_center
+        ws[f"{c}18"].alignment = Alignment(
+            horizontal="center", vertical="center", wrap_text=False
+        )
 
     start_sample_row = 19
     for idx, row in level1_df.iterrows():
@@ -170,9 +177,11 @@ def generate_validation_excel(
     )
     ws["F19"].font = Font(name="Calibri", size=9, bold=True)
     ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
-    ws["F19"].alignment = align_center
+    ws["F19"].alignment = Alignment(
+        horizontal="center", vertical="center", wrap_text=True
+    )
 
-    # 5. ملخص الإحصائيات
+    # 6. ملخص الإحصائيات
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -191,7 +200,7 @@ def generate_validation_excel(
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
 
-    # 6. جدول Measurement Uncertainty
+    # 7. جدول Measurement Uncertainty
     ws.merge_cells("H18:I18")
     ws["H18"] = "Measurment uncertainty"
     ws["H18"].font = font_bold
@@ -226,6 +235,29 @@ def generate_validation_excel(
         if u_name in ["u combiend", "U expanded"]:
             ws[f"H{idx}"].font = font_bold
             ws[f"I{idx}"].font = font_bold
+
+    # ------------------------------------------
+    # 📏 ضبط عرض الأعمدة تلقائياً لضمان ظهور النصوص كاملة في سطر واحد
+    # ------------------------------------------
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            # تتجاهل الخلايا المدمجة العريضة جداً لتجنب تمديد الأعمدة بشكل فائق
+            if cell.coordinate in [
+                "A1",
+                "A4",
+                "A17",
+                "F19",
+                "H18",
+                "H19",
+            ] or ws.multi_cell_range:
+                continue
+            if cell.value:
+                val_str = str(cell.value)
+                if len(val_str) > max_len:
+                    max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 5, 18)
 
     output = io.BytesIO()
     wb.save(output)
