@@ -30,54 +30,71 @@ def generate_validation_excel(
     )
 
     # 1. العنوان الرئيسي العلوي
+    title_text = (
+        f"Calculation of Validation for {test_title}"
+        if test_title
+        else "Calculation of Validation"
+    )
     ws.merge_cells("A1:K1")
-    ws["A1"] = f"Calculation of Validation for {test_title}"
+    ws["A1"] = title_text
     ws["A1"].font = font_main_title
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    # 2. جدول Calibration STD
-    ws.merge_cells("A4:B4")
+    # 2. جدول Calibration STD (A: Level, B: Concentration, C: Area)
+    ws.merge_cells("A4:C4")
     ws["A4"] = "Calibration STD"
     ws["A4"].font = font_bold
     ws["A4"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws["A4"].alignment = align_center
 
-    ws["A5"] = f"Concentration ({unit_str})"
-    ws["B5"] = "Area"
-    for col in ["A", "B"]:
+    unit_header = f"Concentration ({unit_str})" if unit_str else "Concentration"
+    ws["A5"] = "Level"
+    ws["B5"] = unit_header
+    ws["C5"] = "Area"
+    for col in ["A", "B", "C"]:
         ws[f"{col}5"].font = font_bold
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"{col}5"].alignment = align_center
 
     for idx, row in calib_df.iterrows():
         r = idx + 6
-        ws[f"A{r}"] = float(row.get("Concentration", 0))
-        ws[f"B{r}"] = float(row.get("Area", 0))
+        ws[f"A{r}"] = str(row.get("Level", ""))
+        ws[f"B{r}"] = (
+            float(row.get("Concentration", 0))
+            if pd.notnull(row.get("Concentration"))
+            else 0.0
+        )
+        ws[f"C{r}"] = (
+            float(row.get("Area", 0)) if pd.notnull(row.get("Area")) else 0.0
+        )
 
     max_cal_row = max(len(calib_df) + 5, 6)
 
-    # RSQ معادلة
+    # RSQ معادلة (B: Concentration, C: Area)
     ws["A14"] = "RSQ"
     ws["A14"].font = font_bold
-    ws["B14"] = f"=RSQ(B6:B{max_cal_row}, A6:A{max_cal_row})"
+    ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
 
-    # 3. الرسم البياني (Scatter Chart)
+    # 3. الرسم البياني (Scatter Chart - B: X-values / C: Y-values)
     chart = ScatterChart()
-    chart.title = str(test_title)
+    chart.title = str(test_title) if test_title else "Calibration Curve"
     chart.style = 13
 
-    xvalues = Reference(ws, min_col=1, min_row=6, max_row=max_cal_row)
-    yvalues = Reference(ws, min_col=2, min_row=6, max_row=max_cal_row)
+    xvalues = Reference(ws, min_col=2, min_row=6, max_row=max_cal_row)
+    yvalues = Reference(ws, min_col=3, min_row=6, max_row=max_cal_row)
+
     series = Series(yvalues, xvalues, title_from_data=False)
     series.marker.symbol = "circle"
+    series.graphicalProperties.line.noFill = True
     series.trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
+
     chart.series.append(series)
     chart.width = 12
     chart.height = 7
-    ws.add_chart(chart, "E3")
+    ws.add_chart(chart, "F3")
 
     # Spiked Level و t-value قبل جدول العينات
     ws["A15"] = "t-value (t-test)"
@@ -89,19 +106,20 @@ def generate_validation_excel(
     ws["B16"] = float(target_conc)
 
     # 4. جدول Level 1 (العينات)
-    ws.merge_cells("A17:D17")
-    ws["A17"] = f"Level 1 ({unit_str})"
+    ws.merge_cells("A17:E17")
+    ws["A17"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
     ws["A17"].font = font_bold
     ws["A17"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws["A17"].alignment = align_center
 
     headers_l1 = [
         "Samples name",
-        f"Concentration ({unit_str})",
+        unit_header,
         "Recovery %",
-        "Outlier",
+        "Outlier (Z-Score)",
+        "Outlier Status",
     ]
-    cols_l1 = ["A", "B", "C", "D"]
+    cols_l1 = ["A", "B", "C", "D", "E"]
     for c, h in zip(cols_l1, headers_l1):
         ws[f"{c}18"] = h
         ws[f"{c}18"].font = font_bold
@@ -113,28 +131,35 @@ def generate_validation_excel(
         r = idx + start_sample_row
         ws[f"A{r}"] = str(row.get("Sample Name", ""))
 
-        # التركيز المُدخل مباشرة
-        sample_conc = float(row.get("Concentration", 0))
+        sample_conc = (
+            float(row.get("Concentration", 0))
+            if pd.notnull(row.get("Concentration"))
+            else 0.0
+        )
         ws[f"B{r}"] = sample_conc
 
         # معادلة Recovery = (Concentration / Spiked Level) * 100
-        ws[f"C{r}"] = f"=(B{r}/B16)*100"
+        ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
 
         # معادلة Outlier (Z-Score)
         ws[f"D{r}"] = (
             f"=IF(STDEV.S(B$19:B$24)=0, 0, ABS(B{r}-AVERAGE(B$19:B$24))/STDEV.S(B$19:B$24))"
         )
 
+        # معادلة تحديد حالة Outlier
+        ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
+        ws[f"E{r}"].alignment = align_center
+
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
     # الملاحظة الرمادية الجانبية لـ Outlier
-    ws.merge_cells("E19:E24")
-    ws["E19"] = (
+    ws.merge_cells("F19:F24")
+    ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
     )
-    ws["E19"].font = Font(name="Calibri", size=9, bold=True)
-    ws["E19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
-    ws["E19"].alignment = align_center
+    ws["F19"].font = Font(name="Calibri", size=9, bold=True)
+    ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
+    ws["F19"].alignment = align_center
 
     # 5. ملخص الإحصائيات مع المعادلات
     stats_labels = [
@@ -144,7 +169,7 @@ def generate_validation_excel(
             "Standerd Deviation",
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
-        ("RSD %", f"=(B28/B26)*100"),
+        ("RSD %", f"=IF(B26=0, 0, (B28/B26)*100)"),
         ("LOD", f"=B15*B28"),  # t-value * Standard Deviation
         ("LOQ", f"=10*B28"),  # 10 * Standard Deviation
     ]
@@ -156,36 +181,36 @@ def generate_validation_excel(
         ws[f"B{i}"] = formula
 
     # 6. جدول Measurement Uncertainty بمعادلات تفاعلية
-    ws.merge_cells("G18:H18")
-    ws["G18"] = "Measurment uncertainty"
-    ws["G18"].font = font_bold
-    ws["G18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["G18"].alignment = align_center
+    ws.merge_cells("H18:I18")
+    ws["H18"] = "Measurment uncertainty"
+    ws["H18"].font = font_bold
+    ws["H18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["H18"].alignment = align_center
 
-    ws.merge_cells("G19:H19")
-    ws["G19"] = "Level 1"
-    ws["G19"].font = font_bold
-    ws["G19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-    ws["G19"].alignment = align_center
+    ws.merge_cells("H19:I19")
+    ws["H19"] = "Level 1"
+    ws["H19"].font = font_bold
+    ws["H19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws["H19"].alignment = align_center
 
     unc_labels = [
         (
             "uA",
             f"=B28/SQRT(COUNT(B{start_sample_row}:B{end_sample_row}))",
-        ),  # SD / sqrt(n)
+        ),
         ("uB", 0.0017),
         ("uC", 0.0058),
         ("uD", 0.0015),
-        ("u combiend", "=SQRT(H20^2 + H21^2 + H22^2 + H23^2)"),
-        ("U expanded", "=H24*2"),
+        ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
+        ("U expanded", "=I24*2"),
     ]
 
     for idx, (u_name, u_formula) in enumerate(unc_labels, start=20):
-        ws[f"G{idx}"] = u_name
-        ws[f"H{idx}"] = u_formula
+        ws[f"H{idx}"] = u_name
+        ws[f"I{idx}"] = u_formula
         if u_name in ["u combiend", "U expanded"]:
-            ws[f"G{idx}"].font = font_bold
             ws[f"H{idx}"].font = font_bold
+            ws[f"I{idx}"].font = font_bold
 
     output = io.BytesIO()
     wb.save(output)
@@ -199,9 +224,9 @@ st.title("🧪 نظام التحقق من كفاءة الطرق التحليلي
 
 col_header1, col_header2 = st.columns(2)
 with col_header1:
-    test_name = st.text_input("اسم الاختبار / التحليل", "Aflatoxins B1")
+    test_name = st.text_input("اسم الاختبار / التحليل", "")
 with col_header2:
-    conc_unit = st.text_input("وحدة التركيز", "ng/mL")
+    conc_unit = st.text_input("وحدة التركيز", "")
 
 st.divider()
 
@@ -210,13 +235,14 @@ st.divider()
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 
+# الترتيب الجديد: Level - Concentration - Area
 default_calib = [
-    {"Concentration": 1.00, "Area": 5.35},
-    {"Concentration": 2.50, "Area": 11.84},
-    {"Concentration": 5.00, "Area": 21.17},
-    {"Concentration": 10.00, "Area": 38.70},
-    {"Concentration": 15.00, "Area": 62.22},
-    {"Concentration": 20.00, "Area": 84.82},
+    {"Level": "STD 1", "Concentration": 0.0, "Area": 0.0},
+    {"Level": "STD 2", "Concentration": 0.0, "Area": 0.0},
+    {"Level": "STD 3", "Concentration": 0.0, "Area": 0.0},
+    {"Level": "STD 4", "Concentration": 0.0, "Area": 0.0},
+    {"Level": "STD 5", "Concentration": 0.0, "Area": 0.0},
+    {"Level": "STD 6", "Concentration": 0.0, "Area": 0.0},
 ]
 
 valid_std = st.data_editor(
@@ -236,22 +262,22 @@ st.subheader("📋 جدول العينات (Level 1)")
 col_input1, col_input2 = st.columns(2)
 with col_input1:
     target_conc = st.number_input(
-        "مستوى الإضافة (Spiked Level / Conc)", value=4.00, min_value=0.01
+        "مستوى الإضافة (Spiked Level / Conc)", value=0.0, min_value=0.0
     )
 with col_input2:
     t_val = st.number_input(
         "قيمة t-statistic (لحسبة LOD)",
-        value=2.571,
-        help="القيمة الافتراضية 2.571 تتوافق مع n=6 و 95% confidence level",
+        value=0.0,
+        help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
     )
 
 default_samples = [
-    {"Sample Name": "LO level A-1", "Concentration": 3.85},
-    {"Sample Name": "LO level A-2", "Concentration": 3.72},
-    {"Sample Name": "LO level A-3", "Concentration": 3.51},
-    {"Sample Name": "LO level A-4", "Concentration": 3.51},
-    {"Sample Name": "LO level A-5", "Concentration": 3.81},
-    {"Sample Name": "LO level A-6", "Concentration": 3.68},
+    {"Sample Name": "Sample 1", "Concentration": 0.0},
+    {"Sample Name": "Sample 2", "Concentration": 0.0},
+    {"Sample Name": "Sample 3", "Concentration": 0.0},
+    {"Sample Name": "Sample 4", "Concentration": 0.0},
+    {"Sample Name": "Sample 5", "Concentration": 0.0},
+    {"Sample Name": "Sample 6", "Concentration": 0.0},
 ]
 
 edited_samples = st.data_editor(
@@ -268,16 +294,16 @@ st.divider()
 
 try:
     calib_export = (
-        valid_std[["Concentration", "Area"]]
+        valid_std[["Level", "Concentration", "Area"]]
         if not valid_std.empty
-        else pd.DataFrame(columns=["Concentration", "Area"])
+        else pd.DataFrame(columns=["Level", "Concentration", "Area"])
     )
 
     excel_file = generate_validation_excel(
         calib_df=calib_export,
         level1_df=edited_samples,
-        test_title=test_name if test_name else "Aflatoxins B1",
-        unit_str=conc_unit if conc_unit else "ng/mL",
+        test_title=test_name,
+        unit_str=conc_unit,
         target_conc=target_conc,
         t_val=t_val,
     )
