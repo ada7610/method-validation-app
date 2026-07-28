@@ -7,6 +7,7 @@ from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Alignment, Font, PatternFill
 from scipy import stats
 import streamlit as st
+
 def generate_validation_excel(calib_df, level1_df, lod_val, loq_val, t_val):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -40,8 +41,8 @@ def generate_validation_excel(calib_df, level1_df, lod_val, loq_val, t_val):
 
     for idx, row in calib_df.iterrows():
         r = idx + 3
-        ws[f"A{r}"] = row["Concentration"]
-        ws[f"B{r}"] = row["Area"]
+        ws[f"A{r}"] = row.get("Concentration", 0)
+        ws[f"B{r}"] = row.get("Area", 0)
 
     # 2. رسم المنحنى البياني
     chart = ScatterChart()
@@ -49,7 +50,7 @@ def generate_validation_excel(calib_df, level1_df, lod_val, loq_val, t_val):
     chart.x_axis.title = "Concentration (mg/L)"
     chart.y_axis.title = "Area (µs*min)"
 
-    max_row_calib = len(calib_df) + 2
+    max_row_calib = max(len(calib_df) + 2, 3)
     xvalues = Reference(ws, min_col=1, min_row=3, max_row=max_row_calib)
     yvalues = Reference(ws, min_col=2, min_row=3, max_row=max_row_calib)
     series = Series(yvalues, xvalues, title_from_data=False)
@@ -89,13 +90,13 @@ def generate_validation_excel(calib_df, level1_df, lod_val, loq_val, t_val):
 
     for idx, row in level1_df.iterrows():
         r = idx + 20
-        ws[f"A{r}"] = row["Sample"]
-        ws[f"B{r}"] = row["Concentration"]
-        ws[f"C{r}"] = row["Area"]
-        ws[f"D{r}"] = row["Recovery"]
-        ws[f"E{r}"] = row["Outlier"]
-        ws[f"F{r}"] = row["U_Type"]
-        ws[f"H{r}"] = row["Uncertainty"]
+        ws[f"A{r}"] = row.get("Sample", "")
+        ws[f"B{r}"] = row.get("Concentration", 0)
+        ws[f"C{r}"] = row.get("Area", 0)
+        ws[f"D{r}"] = row.get("Recovery", "")
+        ws[f"E{r}"] = row.get("Outlier", "")
+        ws[f"F{r}"] = row.get("U_Type", "")
+        ws[f"H{r}"] = row.get("Uncertainty", 0)
 
     # 4. ملخص الحسابات
     ws["A25"] = "Mean"
@@ -147,6 +148,8 @@ st.markdown("---")
 slope, intercept, r_squared, steyx = 0.0, 0.0, 0.0, 0.0
 mean_conc, sd_conc, mean_recovery, rsd_percent = 0.0, 0.0, 0.0, 0.0
 lod, loq = 0.0, 0.0
+valid_std = pd.DataFrame()
+display_samples_df = pd.DataFrame()
 
 # 3. قسم منحنى المعايرة والخطية
 st.subheader("1. Calibration Curve & Linearity (منحنى المعايرة)")
@@ -242,7 +245,6 @@ if samples_df is not None and not samples_df.empty and spike_nominal_conc > 0:
             outlier_status = []
             z_score_list = []
             
-            # حساب Z-Score لاكتشاف Outliers (معيار 95% Confidence Level)
             if sd_temp > 0 and len(calc_concs) >= 3:
                 z_scores = np.abs((calc_concs - mean_temp) / sd_temp)
                 for z in z_scores:
@@ -276,30 +278,37 @@ if samples_df is not None and not samples_df.empty and spike_nominal_conc > 0:
             if slope > 0:
                 lod = float((3.3 * steyx) / slope)
                 loq = float((10.0 * steyx) / slope)
-                
-            summary_data = {
-                "Parameter": ["Mean Concentration", "Mean Recovery", "SD (Standard Deviation)", "%RSD (Relative Standard Deviation)", "LOD (Limit of Detection)", "LOQ (Limit of Quantitation)"],
-                "Value": [f"{mean_conc:.4f}", f"{mean_recovery:.2f}%", f"{sd_conc:.4f}", f"{rsd_percent:.2f}%", st.subheader("حساب حد الكشف (LOD) وحد التقدير الكمي (LOQ)")
+    except Exception as e:
+        st.error(f"خطأ في معالجة العينات: {e}")
 
-# 1. إدخال يدوي لقيمة T-test
+# 1. إنشاء جدول ملخص النتائج
+summary_df = pd.DataFrame(
+    {
+        "Metric": ["Mean", "Mean Recovery %", "SD", "RSD %"],
+        "Value": [
+            f"{mean_conc:.4f}",
+            f"{mean_recovery:.2f}%",
+            f"{sd_conc:.4f}",
+            f"{rsd_percent:.2f}%",
+        ],
+    }
+)
+
+st.table(summary_df)
+
+# 2. عنوان قسم LOD & LOQ
+st.subheader("حساب حد الكشف (LOD) وحد التقدير الكمي (LOQ)")
+
+# 3. مدخلات ومعادلة LOD الجديدة
 t_value = st.number_input(
     "أدخل قيمة T-test:", value=3.143, step=0.001, format="%.3f"
 )
 
-# 2. المعادلة الجديدة: LOD = t * SD
-lod_result = t_value * sd_value  # (تأكد أن sd_value هو اسم متغير الانحراف المعياري لديك)
+lod_result = t_value * sd_conc
 loq_result = lod_result * 3
 
-# 3. عرض النتائج الجديدة
 st.write(f"**LOD:** {lod_result:.4f}")
-st.write(f"**LOQ:** {loq_result:.4f}"), f"{loq:.4f}"],
-                "Unit": [conc_unit, "%", conc_unit, "%", conc_unit, conc_unit]
-            }
-            st.table(pd.DataFrame(summary_data))
-    except Exception as e:
-        st.error(f"خطأ في حساب نتائج العينات: {e}")
-
-st.markdown("---")
+st.write(f"**LOQ:** {loq_result:.4f}")
 
 # 6. جدول عدم اليقين (Measurement Uncertainty Budget)
 st.subheader("4. Measurement Uncertainty Budget (جدول عدم اليقين)")
@@ -341,26 +350,53 @@ st.markdown("---")
 # ==========================================
 # 📥 قسم تصدير التقرير النهائي إلى Excel
 # ==========================================
-st.divider()  # خط فاصل لتنظيم الواجهة
+st.divider()
 st.subheader("📥 تصدير التقرير النهائي")
 
 try:
-    # 1. تجهيز ملف الإكسل المنسق في الذاكرة عبر استدعاء الدالة الجديدة
+    # إعداد جدول المعايرة للـ Excel
+    calib_export = valid_std[["Concentration", "Area"]] if not valid_std.empty else pd.DataFrame(columns=["Concentration", "Area"])
+
+    # إعداد جدول العينات وعدم اليقين للـ Excel
+    if not display_samples_df.empty:
+        sample_names = list(display_samples_df["Sample Name"])
+        sample_concs = list(display_samples_df[f"Calculated Conc ({conc_unit})"])
+        sample_recs = list(display_samples_df["Recovery %"])
+        sample_outs = list(display_samples_df["Z-Score"])
+    else:
+        sample_names, sample_concs, sample_recs, sample_outs = [], [], [], []
+
+    u_types = ["uA", "uB", "uC", "uD", "u combined"]
+    u_vals = [u_A, u_B, u_C, u_D, u_combined]
+
+    max_rows = max(len(sample_names), len(u_types))
+
+    # تحضير الصفوف المتوافق طولها
+    export_data = {
+        "Sample": sample_names + [""] * (max_rows - len(sample_names)),
+        "Concentration": sample_concs + [0.0] * (max_rows - len(sample_concs)),
+        "Area": [0.0] * max_rows,
+        "Recovery": sample_recs + [""] * (max_rows - len(sample_recs)),
+        "Outlier": sample_outs + [""] * (max_rows - len(sample_outs)),
+        "U_Type": u_types + [""] * (max_rows - len(u_types)),
+        "Uncertainty": u_vals + [0.0] * (max_rows - len(u_vals)),
+    }
+    level1_export = pd.DataFrame(export_data)
+
     excel_file = generate_validation_excel(
-        calib_df=calib_df,  # جدول المعايرة
-        level1_df=level1_df,  # جدول بيانات المستوى الأول
-        lod_val=lod_result,  # قيمة LOD المعمدة بناءً على T-test
-        loq_val=loq_result,  # قيمة LOQ
-        t_val=t_value,  # قيمة t-score المدخلة
+        calib_df=calib_export,
+        level1_df=level1_export,
+        lod_val=lod_result,
+        loq_val=loq_result,
+        t_val=t_value,
     )
 
-    # 2. عرض زر التحميل للمستخدم
     st.download_button(
         label="📥 تحميل تقرير Validation Excel المنسق",
         data=excel_file,
         file_name="Method_Validation_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,  # ليكون الزر بعرض الصفحة وشكله مرتب
+        use_container_width=True,
     )
 except Exception as e:
     st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
