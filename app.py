@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 # ==========================================
-# 🎨 إعدادات الصفحة الرئيسية
+# 🎨 إعدادات الصفحة الرئيسية (يجب أن تكون أول أمر)
 # ==========================================
 st.set_page_config(
     page_title="تطبيق التحقق من الطرق التحليلية",
@@ -63,13 +63,13 @@ def generate_validation_excel(
 
     for idx, row in calib_df.iterrows():
         r = idx + 6
-        ws[f"A{r}"] = row.get("Concentration", 0)
-        ws[f"B{r}"] = row.get("Area", 0)
+        ws[f"A{r}"] = float(row.get("Concentration", 0))
+        ws[f"B{r}"] = float(row.get("Area", 0))
 
     # RSQ في السطر 14
     ws["A14"] = "RSQ"
     ws["A14"].font = font_bold
-    max_cal_row = len(calib_df) + 5
+    max_cal_row = max(len(calib_df) + 5, 6)
     ws["B14"] = f"=RSQ(B6:B{max_cal_row}, A6:A{max_cal_row})"
 
     # 3. الرسم البياني (Scatter Chart)
@@ -111,10 +111,10 @@ def generate_validation_excel(
 
     for idx, row in level1_df.iterrows():
         r = idx + 19
-        ws[f"A{r}"] = row.get("Sample", "")
-        ws[f"B{r}"] = row.get("Concentration", 0)
-        ws[f"C{r}"] = row.get("Recovery", 0)
-        ws[f"D{r}"] = row.get("Outlier", 0)
+        ws[f"A{r}"] = str(row.get("Sample", ""))
+        ws[f"B{r}"] = float(row.get("Concentration", 0))
+        ws[f"C{r}"] = float(row.get("Recovery", 0))
+        ws[f"D{r}"] = float(row.get("Outlier", 0))
 
     # الملاحظة الرمادية الجانبية لـ Outlier
     ws.merge_cells("E19:E24")
@@ -144,8 +144,8 @@ def generate_validation_excel(
     ws["B27"] = "=AVERAGE(C19:C24)"
     ws["B28"] = "=STDEV.S(B19:B24)"
     ws["B29"] = "=(B28/B26)*100"
-    ws["B30"] = lod_val
-    ws["B31"] = loq_val
+    ws["B30"] = float(lod_val)
+    ws["B31"] = float(loq_val)
 
     # 6. جدول Measurement Uncertainty
     ws.merge_cells("G18:H18")
@@ -171,7 +171,7 @@ def generate_validation_excel(
 
     for idx, (u_name, u_val) in enumerate(unc_labels, start=20):
         ws[f"G{idx}"] = u_name
-        ws[f"H{idx}"] = u_val
+        ws[f"H{idx}"] = float(u_val)
         if u_name in ["u combiend", "U expanded"]:
             ws[f"G{idx}"].font = font_bold
             ws[f"H{idx}"].font = font_bold
@@ -243,12 +243,12 @@ display_samples = []
 calculated_concs = []
 
 for _, row in edited_samples.iterrows():
-    area_val = row["Area"]
+    area_val = float(row["Area"]) if row["Area"] is not None else 0.0
     calc_c = (area_val - intercept) / slope if slope != 0 else 0
     rec = (calc_c / target_conc * 100) if target_conc != 0 else 0
     calculated_concs.append(calc_c)
     display_samples.append({
-        "Sample Name": row["Sample Name"],
+        "Sample Name": str(row["Sample Name"]),
         "Area": area_val,
         f"Calculated Conc ({conc_unit})": round(calc_c, 2),
         "Recovery %": f"{rec:.2f}%",
