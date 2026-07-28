@@ -1,8 +1,126 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-from scipy import stats
+import io
 import matplotlib.pyplot as plt
+import numpy as np
+import openpyxl
+import pandas as pd
+from openpyxl.chart import Reference, ScatterChart, Series
+from openpyxl.styles import Alignment, Font, PatternFill
+from scipy import stats
+import streamlit as st
+def generate_validation_excel(calib_df, level1_df, lod_val, loq_val, t_val):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Flouride"
+    ws.views.sheetView[0].showGridLines = True
+
+    # الألوان والتنسيقات
+    COLOR_HEADER_CALIB = "D9E1F2"
+    COLOR_HEADER_LEVEL = "8EA9DB"
+    COLOR_HEADER_ORANGE = "F4B084"
+    COLOR_BLUE_SUMMARY = "D9E1F2"
+    COLOR_RED_LOD = "FF0000"
+
+    font_bold = Font(name="Calibri", size=11, bold=True)
+    font_white_bold = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    align_center = Alignment(horizontal="center", vertical="center")
+
+    # 1. جدول المعايرة
+    ws.merge_cells("A1:B1")
+    ws["A1"] = "Calibration STD"
+    ws["A1"].font = font_bold
+    ws["A1"].fill = PatternFill("solid", fgColor=COLOR_HEADER_CALIB)
+    ws["A1"].alignment = align_center
+
+    ws["A2"] = "Concentration (mg/L)"
+    ws["B2"] = "Area (µs*min)"
+    for col in ["A", "B"]:
+        ws[f"{col}2"].font = font_bold
+        ws[f"{col}2"].fill = PatternFill("solid", fgColor=COLOR_HEADER_CALIB)
+        ws[f"{col}2"].alignment = align_center
+
+    for idx, row in calib_df.iterrows():
+        r = idx + 3
+        ws[f"A{r}"] = row["Concentration"]
+        ws[f"B{r}"] = row["Area"]
+
+    # 2. رسم المنحنى البياني
+    chart = ScatterChart()
+    chart.title = "Flouride Calibration Curve"
+    chart.x_axis.title = "Concentration (mg/L)"
+    chart.y_axis.title = "Area (µs*min)"
+
+    max_row_calib = len(calib_df) + 2
+    xvalues = Reference(ws, min_col=1, min_row=3, max_row=max_row_calib)
+    yvalues = Reference(ws, min_col=2, min_row=3, max_row=max_row_calib)
+    series = Series(yvalues, xvalues, title_from_data=False)
+    series.marker.symbol = "circle"
+    series.trendline = openpyxl.chart.trendline.Trendline(
+        trendlineType="linear", dispEq=True, dispRSqr=True
+    )
+    chart.series.append(series)
+    chart.width = 14
+    chart.height = 7
+    ws.add_chart(chart, "D1")
+
+    # 3. جدول Level 1
+    ws.merge_cells("A18:I18")
+    ws["A18"] = "Level1 (0.6 mg/L)"
+    ws["A18"].font = font_bold
+    ws["A18"].fill = PatternFill("solid", fgColor=COLOR_HEADER_LEVEL)
+    ws["A18"].alignment = align_center
+
+    headers = [
+        "Samples name",
+        "Concentration (mg/L)",
+        "Area(µs*min)",
+        "Recovery %",
+        f"Outlier ({t_val})",
+        "",
+        "",
+        "Measurment uncertainty",
+        "",
+    ]
+    cols = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+    for c, h in zip(cols, headers):
+        ws[f"{c}19"] = h
+        ws[f"{c}19"].font = font_bold
+        ws[f"{c}19"].fill = PatternFill("solid", fgColor=COLOR_HEADER_ORANGE)
+        ws[f"{c}19"].alignment = align_center
+
+    for idx, row in level1_df.iterrows():
+        r = idx + 20
+        ws[f"A{r}"] = row["Sample"]
+        ws[f"B{r}"] = row["Concentration"]
+        ws[f"C{r}"] = row["Area"]
+        ws[f"D{r}"] = row["Recovery"]
+        ws[f"E{r}"] = row["Outlier"]
+        ws[f"F{r}"] = row["U_Type"]
+        ws[f"H{r}"] = row["Uncertainty"]
+
+    # 4. ملخص الحسابات
+    ws["A25"] = "Mean"
+    ws["B25"] = "=AVERAGE(B20:B24)"
+    ws["A26"] = "Mean Recovery %"
+    ws["B26"] = "=AVERAGE(D20:D24)"
+    ws["A27"] = "Standard Deviation"
+    ws["B27"] = "=STDEV.S(B20:B24)"
+    ws["A28"] = "RSD %"
+    ws["B28"] = "=(B27/B25)*100"
+
+    ws["A29"] = "LOD"
+    ws["B29"] = lod_val
+    ws["A30"] = "LOQ"
+    ws["B30"] = "=3*B29"
+
+    for r in [29, 30]:
+        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_RED_LOD)
+        ws[f"B{r}"].fill = PatternFill("solid", fgColor=COLOR_RED_LOD)
+        ws[f"A{r}"].font = font_white_bold
+        ws[f"B{r}"].font = font_white_bold
+
+    output = io.BytesIO()
+    wb.save(output)
+    return output.getvalue()
 
 # 1. إعدادات الصفحة الأساسية
 st.set_page_config(page_title="Method Validation Calculator", page_icon="🔬", layout="wide")
@@ -161,7 +279,20 @@ if samples_df is not None and not samples_df.empty and spike_nominal_conc > 0:
                 
             summary_data = {
                 "Parameter": ["Mean Concentration", "Mean Recovery", "SD (Standard Deviation)", "%RSD (Relative Standard Deviation)", "LOD (Limit of Detection)", "LOQ (Limit of Quantitation)"],
-                "Value": [f"{mean_conc:.4f}", f"{mean_recovery:.2f}%", f"{sd_conc:.4f}", f"{rsd_percent:.2f}%", f"{lod:.4f}", f"{loq:.4f}"],
+                "Value": [f"{mean_conc:.4f}", f"{mean_recovery:.2f}%", f"{sd_conc:.4f}", f"{rsd_percent:.2f}%", st.subheader("حساب حد الكشف (LOD) وحد التقدير الكمي (LOQ)")
+
+# 1. إدخال يدوي لقيمة T-test
+t_value = st.number_input(
+    "أدخل قيمة T-test:", value=3.143, step=0.001, format="%.3f"
+)
+
+# 2. المعادلة الجديدة: LOD = t * SD
+lod_result = t_value * sd_value  # (تأكد أن sd_value هو اسم متغير الانحراف المعياري لديك)
+loq_result = lod_result * 3
+
+# 3. عرض النتائج الجديدة
+st.write(f"**LOD:** {lod_result:.4f}")
+st.write(f"**LOQ:** {loq_result:.4f}"), f"{loq:.4f}"],
                 "Unit": [conc_unit, "%", conc_unit, "%", conc_unit, conc_unit]
             }
             st.table(pd.DataFrame(summary_data))
@@ -207,20 +338,30 @@ st.success(f"**{test_name if test_name else 'Result'} = {final_result_text}** (a
 
 st.markdown("---")
 
-# 7. تصدير التقرير
-st.subheader("5. Export Report (تصدير التقرير)")
+# ==========================================
+# 📥 قسم تصدير التقرير النهائي إلى Excel
+# ==========================================
+st.divider()  # خط فاصل لتنظيم الواجهة
+st.subheader("📥 تصدير التقرير النهائي")
 
-export_df = pd.DataFrame({
-    "Metric": ["Mean Conc", "Mean Recovery", "RSD%", "u_A", "u_B", "u_C", "u_D", "u_Combined", "u_Expanded (U)"],
-    "Value": [f"{mean_conc:.4f}", f"{mean_recovery:.2f}%", f"{rsd_percent:.2f}%", f"{u_A:.6f}", f"{u_B:.6f}", f"{u_C:.6f}", f"{u_D:.6f}", f"{u_combined:.6f}", f"{u_expanded:.6f}"],
-    "Unit": [conc_unit, "%", "%", "-", "-", "-", "-", "-", conc_unit]
-})
+try:
+    # 1. تجهيز ملف الإكسل المنسق في الذاكرة عبر استدعاء الدالة الجديدة
+    excel_file = generate_validation_excel(
+        calib_df=calib_df,  # جدول المعايرة
+        level1_df=level1_df,  # جدول بيانات المستوى الأول
+        lod_val=lod_result,  # قيمة LOD المعمدة بناءً على T-test
+        loq_val=loq_result,  # قيمة LOQ
+        t_val=t_value,  # قيمة t-score المدخلة
+    )
 
-csv_data = export_df.to_csv(index=False).encode('utf-8-sig')
-
-st.download_button(
-    label="📥 تحميل التقرير (يفتح مباشرة في Excel)",
-    data=csv_data,
-    file_name=f"Validation_Report_{test_name if test_name else 'Method'}.csv",
-    mime="text/csv"
+    # 2. عرض زر التحميل للمستخدم
+    st.download_button(
+        label="📥 تحميل تقرير Validation Excel المنسق",
+        data=excel_file,
+        file_name="Method_Validation_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,  # ليكون الزر بعرض الصفحة وشكله مرتب
+    )
+except Exception as e:
+    st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
 )
