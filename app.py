@@ -96,13 +96,25 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # المدخلات الأساسية
-    ws["A15"] = "t-value (t-test)"
+    # ------------------------------------------
+    # 📌 تعديل تنسيق ودمج خانات t-value و Spiked Level
+    # ------------------------------------------
+    # t-value (توسيع الخلية واللون البرتقالي)
+    ws["A15"] = f"t-value (t-test):  {float(t_val)}"
+    ws.merge_cells("A15:C15")
     ws["A15"].font = font_bold
-    ws["B15"] = float(t_val)
+    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A15"].alignment = Alignment(horizontal="left", vertical="center")
 
-    ws["A16"] = "Spiked Level"
+    # Spiked Level (توسيع الخلية واللون البرتقالي)
+    ws["A16"] = f"Spiked Level:  {float(target_conc)}"
+    ws.merge_cells("A16:C16")
     ws["A16"].font = font_bold
+    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A16"].alignment = Alignment(horizontal="left", vertical="center")
+
+    # خلية مخفية لإبقاء المعادلة تعمل بسلاسة في الخلفية بالنسبة للمراجع الإحصائية
+    ws["B15"] = float(t_val)
     ws["B16"] = float(target_conc)
 
     # 4. جدول Level 1 (العينات)
@@ -138,11 +150,10 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
-        # Recovery = (Concentration / Spiked Level) * 100
+        # Recovery = (Concentration / Spiked Level) * 100 (B16 تمثل قيمة Spiked Level)
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
 
         # Outlier = ABS(Concentration - Mean) / SD
-        # B26 هي خلية الـ Mean، و B28 هي خلية الـ SD
         ws[f"D{r}"] = f"=IF(B$28=0, 0, ABS(B{r}-B$26)/B$28)"
 
         # Outlier Status
@@ -160,13 +171,8 @@ def generate_validation_excel(
     ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws["F19"].alignment = align_center
 
-    # 5. ملخص الإحصائيات (مواقع الخلايا ثابتة لتعمل المعاملات بسلاسة)
-    # B26: Mean
-    # B27: Recovery %
-    # B28: Standard Deviation (SD)
-    # B29: RSD %
-    # B30: LOD
-    # B31: LOQ
+    # 5. ملخص الإحصائيات
+    # B26: Mean, B27: Recovery %, B28: Standard Deviation (SD), B29: RSD %, B30: LOD, B31: LOQ
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
