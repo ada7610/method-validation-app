@@ -2,7 +2,6 @@ import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
 import pandas as pd
 import streamlit as st
 
@@ -58,7 +57,6 @@ def generate_validation_excel(
     for col in ["A", "B", "C"]:
         ws[f"{col}5"].font = font_bold
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        # إلغاء التفاف النص لضمان ظهور كلمة Concentration في سطر واحد
         ws[f"{col}5"].alignment = Alignment(
             horizontal="center", vertical="center", wrap_text=False
         )
@@ -103,7 +101,7 @@ def generate_validation_excel(
     ws.add_chart(chart, "F3")
 
     # ------------------------------------------
-    # 📌 4. خانات t-value و Spiked Level منفصلة وواضحة
+    # 📌 4. خانات t-value و Spiked Level منفصلة وواضحة باللون البرتقالي
     # ------------------------------------------
     # t-value (تكون في الخلية A15 والإدخال في B15)
     ws["A15"] = "t-value (t test)"
@@ -236,36 +234,28 @@ def generate_validation_excel(
             ws[f"H{idx}"].font = font_bold
             ws[f"I{idx}"].font = font_bold
 
-    # ------------------------------------------
-    # 📏 ضبط عرض الأعمدة تلقائياً لضمان ظهور النصوص كاملة في سطر واحد
-    # ------------------------------------------
-    for col in ws.columns:
-        max_len = 0
-        col_letter = get_column_letter(col[0].column)
-        for cell in col:
-            # تتجاهل الخلايا المدمجة العريضة جداً لتجنب تمديد الأعمدة بشكل فائق
-            if cell.coordinate in [
-                "A1",
-                "A4",
-                "A17",
-                "F19",
-                "H18",
-                "H19",
-            ] or ws.multi_cell_range:
-                continue
-            if cell.value:
-                val_str = str(cell.value)
-                if len(val_str) > max_len:
-                    max_len = len(val_str)
-        ws.column_dimensions[col_letter].width = max(max_len + 5, 18)
+    # 📏 ضبط أبعاد الأعمدة تلقائياً بأحجام ثابتة ومناسبة لمنع أخطاء الحساب
+    column_widths = {
+        "A": 22,
+        "B": 24,
+        "C": 18,
+        "D": 18,
+        "E": 18,
+        "F": 25,
+        "H": 22,
+        "I": 18,
+    }
+    for col_letter, width in column_widths.items():
+        ws.column_dimensions[col_letter].width = width
 
     output = io.BytesIO()
     wb.save(output)
+    output.seek(0)  # إعادة تعيين مؤشر القراءة لبداية الملف
     return output.getvalue()
 
 
 # ==========================================
-# ⚙️ واجهة المستخدم المبسطة (Streamlit UI)
+# ⚙️ واجهة المستخدم (Streamlit UI)
 # ==========================================
 st.title("🧪 نظام التحقق من كفاءة الطرق التحليلية")
 
