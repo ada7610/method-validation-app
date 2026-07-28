@@ -100,18 +100,13 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # ------------------------------------------
-    # 📌 4. خانات t-value و Spiked Level منفصلة وواضحة باللون البرتقالي
-    # ------------------------------------------
-    # t-value (تكون في الخلية A15 والإدخال في B15)
+    # 4. خانات t-value و Spiked Level
     ws["A15"] = "t-value (t test)"
     ws["B15"] = float(t_val)
 
-    # Spiked Level (تكون في الخلية A16 والإدخال في B16)
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # إضافة التنسيق واللون البرتقالي
     for r in [15, 16]:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
@@ -211,13 +206,11 @@ def generate_validation_excel(
     ws["H19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws["H19"].alignment = align_center
 
-    # حفظ Standard Purity
     ws["H17"] = "Standard Purity"
     ws["H17"].font = font_bold
     purity_val = std_purity / 100.0 if std_purity > 1.0 else std_purity
     ws["I17"] = purity_val
 
-    # المعادلات الخاصة بـ Measurement Uncertainty
     unc_labels = [
         ("uA", "=B29/100"),
         ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
@@ -234,7 +227,6 @@ def generate_validation_excel(
             ws[f"H{idx}"].font = font_bold
             ws[f"I{idx}"].font = font_bold
 
-    # 📏 ضبط أبعاد الأعمدة تلقائياً بأحجام ثابتة ومناسبة لمنع أخطاء الحساب
     column_widths = {
         "A": 22,
         "B": 24,
@@ -250,7 +242,7 @@ def generate_validation_excel(
 
     output = io.BytesIO()
     wb.save(output)
-    output.seek(0)  # إعادة تعيين مؤشر القراءة لبداية الملف
+    output.seek(0)
     return output.getvalue()
 
 
@@ -287,6 +279,10 @@ valid_std = st.data_editor(
     key="calib_table",
     use_container_width=True,
 )
+
+# 🔄 تحديث وتوليد الترقيم التلقائي لخانة Level
+if not valid_std.empty:
+    valid_std["Level"] = [f"STD {i+1}" for i in range(len(valid_std))]
 
 st.divider()
 
@@ -330,6 +326,12 @@ edited_samples = st.data_editor(
     key="samples_table",
     use_container_width=True,
 )
+
+# 🔄 تحديث وتوليد الترقيم التلقائي لخانة Sample Name
+if not edited_samples.empty:
+    edited_samples["Sample Name"] = [
+        f"Sample {i+1}" for i in range(len(edited_samples))
+    ]
 
 # ==========================================
 # 📥 قسم تصدير التقرير النهائي إلى Excel
