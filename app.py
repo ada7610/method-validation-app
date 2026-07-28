@@ -75,7 +75,7 @@ def generate_validation_excel(
 
     max_cal_row = max(len(calib_df) + 5, 6)
 
-    # RSQ معادلة (في الخلية B14)
+    # RSQ معادلة
     ws["A14"] = "RSQ"
     ws["A14"].font = font_bold
     ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
@@ -264,25 +264,25 @@ st.divider()
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 
-default_calib = [
-    {"Level": "STD 1", "Concentration": 0.0, "Area": 0.0},
-    {"Level": "STD 2", "Concentration": 0.0, "Area": 0.0},
-    {"Level": "STD 3", "Concentration": 0.0, "Area": 0.0},
-    {"Level": "STD 4", "Concentration": 0.0, "Area": 0.0},
-    {"Level": "STD 5", "Concentration": 0.0, "Area": 0.0},
-    {"Level": "STD 6", "Concentration": 0.0, "Area": 0.0},
+num_calib_levels = st.number_input(
+    "عدد مستويات المعايرة (Calibration Levels)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+)
+
+calib_data = [
+    {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
+    for i in range(num_calib_levels)
 ]
 
 valid_std = st.data_editor(
-    pd.DataFrame(default_calib),
-    num_rows="dynamic",
-    key="calib_table",
+    pd.DataFrame(calib_data),
+    num_rows="fixed",
+    key=f"calib_table_{num_calib_levels}",
     use_container_width=True,
 )
-
-# 🔄 تحديث وتوليد الترقيم التلقائي لخانة Level
-if not valid_std.empty:
-    valid_std["Level"] = [f"STD {i+1}" for i in range(len(valid_std))]
 
 st.divider()
 
@@ -311,27 +311,25 @@ with col_input3:
         help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
     )
 
-default_samples = [
-    {"Sample Name": "Sample 1", "Concentration": 0.0},
-    {"Sample Name": "Sample 2", "Concentration": 0.0},
-    {"Sample Name": "Sample 3", "Concentration": 0.0},
-    {"Sample Name": "Sample 4", "Concentration": 0.0},
-    {"Sample Name": "Sample 5", "Concentration": 0.0},
-    {"Sample Name": "Sample 6", "Concentration": 0.0},
+num_samples = st.number_input(
+    "عدد التكراريات / العينات (Number of Replicates)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+)
+
+sample_data = [
+    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0}
+    for i in range(num_samples)
 ]
 
 edited_samples = st.data_editor(
-    pd.DataFrame(default_samples),
-    num_rows="dynamic",
-    key="samples_table",
+    pd.DataFrame(sample_data),
+    num_rows="fixed",
+    key=f"samples_table_{num_samples}",
     use_container_width=True,
 )
-
-# 🔄 تحديث وتوليد الترقيم التلقائي لخانة Sample Name
-if not edited_samples.empty:
-    edited_samples["Sample Name"] = [
-        f"Sample {i+1}" for i in range(len(edited_samples))
-    ]
 
 # ==========================================
 # 📥 قسم تصدير التقرير النهائي إلى Excel
