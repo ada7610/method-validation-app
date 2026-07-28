@@ -7,15 +7,6 @@ from openpyxl.styles import Alignment, Font, PatternFill
 import pandas as pd
 import streamlit as st
 
-# ==========================================
-# 🎨 إعدادات الصفحة الرئيسية (يجب أن تكون أول أمر)
-# ==========================================
-st.set_page_config(
-    page_title="تطبيق التحقق من الطرق التحليلية",
-    page_layout="wide",
-    initial_sidebar_state="expanded",
-)
-
 
 # ==========================================
 # 📊 دالة إنشاء ملف Excel المنسق مطابق للصورة
@@ -74,7 +65,7 @@ def generate_validation_excel(
 
     # 3. الرسم البياني (Scatter Chart)
     chart = ScatterChart()
-    chart.title = test_title
+    chart.title = str(test_title)
     chart.style = 13
 
     xvalues = Reference(ws, min_col=1, min_row=6, max_row=max_cal_row)
@@ -222,7 +213,7 @@ if len(valid_std) >= 2:
     r_matrix = np.corrcoef(valid_std["Concentration"], valid_std["Area"])
     r_squared = r_matrix[0, 1] ** 2
 else:
-    slope, intercept, r_squared = 1, 0, 0
+    slope, intercept, r_squared = 1.0, 0.0, 0.0
 
 st.header("📋 عينات المستوى الأول (Level 1)")
 target_conc = st.number_input("التركيز المستهدف (Spiked Conc)", value=4.00)
@@ -244,8 +235,8 @@ calculated_concs = []
 
 for _, row in edited_samples.iterrows():
     area_val = float(row["Area"]) if row["Area"] is not None else 0.0
-    calc_c = (area_val - intercept) / slope if slope != 0 else 0
-    rec = (calc_c / target_conc * 100) if target_conc != 0 else 0
+    calc_c = (area_val - intercept) / slope if slope != 0 else 0.0
+    rec = (calc_c / target_conc * 100) if target_conc != 0 else 0.0
     calculated_concs.append(calc_c)
     display_samples.append({
         "Sample Name": str(row["Sample Name"]),
@@ -258,14 +249,14 @@ display_samples_df = pd.DataFrame(display_samples)
 
 # Outliers حساب الـ
 if len(calculated_concs) > 1:
-    mean_c = np.mean(calculated_concs)
-    std_c = np.std(calculated_concs, ddof=1)
+    mean_c = float(np.mean(calculated_concs))
+    std_c = float(np.std(calculated_concs, ddof=1))
     z_scores = [
-        abs(c - mean_c) / std_c if std_c != 0 else 0 for c in calculated_concs
+        abs(c - mean_c) / std_c if std_c != 0 else 0.0 for c in calculated_concs
     ]
 else:
-    mean_c, std_c = 0, 0
-    z_scores = [0] * len(calculated_concs)
+    mean_c, std_c = 0.0, 0.0
+    z_scores = [0.0] * len(calculated_concs)
 
 display_samples_df["Z-Score"] = [round(z, 2) for z in z_scores]
 
@@ -273,16 +264,16 @@ st.subheader("📊 نتائج العينات والحيود")
 st.dataframe(display_samples_df, use_container_width=True)
 
 # الإحصائيات الحسابية
-lod_result = round(3.3 * (std_c / slope), 2) if slope != 0 else 0
-loq_result = round(10 * (std_c / slope), 2) if slope != 0 else 0
+lod_result = round(3.3 * (std_c / slope), 2) if slope != 0 else 0.0
+loq_result = round(10.0 * (std_c / slope), 2) if slope != 0 else 0.0
 
 st.subheader("📐 حسابات عدم اليقين (Measurement Uncertainty)")
-u_A = round(std_c / np.sqrt(len(calculated_concs)) if len(calculated_concs) > 0 else 0, 4)
+u_A = round(std_c / np.sqrt(len(calculated_concs)) if len(calculated_concs) > 0 else 0.0, 4)
 u_B = 0.0017
 u_C = 0.0058
 u_D = 0.0015
-u_combined = round(np.sqrt(u_A**2 + u_B**2 + u_C**2 + u_D**2), 4)
-u_expanded = round(u_combined * 2, 4)
+u_combined = round(float(np.sqrt(u_A**2 + u_B**2 + u_C**2 + u_D**2)), 4)
+u_expanded = round(u_combined * 2.0, 4)
 
 col_u1, col_u2 = st.columns(2)
 with col_u1:
