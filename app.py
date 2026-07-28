@@ -141,10 +141,9 @@ def generate_validation_excel(
         # Recovery = (Concentration / Spiked Level) * 100
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
 
-        # Outlier (Z-Score)
-        ws[f"D{r}"] = (
-            f"=IF(STDEV.S(B$19:B$24)=0, 0, ABS(B{r}-AVERAGE(B$19:B$24))/STDEV.S(B$19:B$24))"
-        )
+        # Outlier = ABS(Concentration - Mean) / SD
+        # B26 هي خلية الـ Mean، و B28 هي خلية الـ SD
+        ws[f"D{r}"] = f"=IF(B$28=0, 0, ABS(B{r}-B$26)/B$28)"
 
         # Outlier Status
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
@@ -161,8 +160,13 @@ def generate_validation_excel(
     ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws["F19"].alignment = align_center
 
-    # 5. ملخص الإحصائيات
-    # B26: Mean, B27: Recovery %, B28: Standard Deviation, B29: RSD %, B30: LOD, B31: LOQ
+    # 5. ملخص الإحصائيات (مواقع الخلايا ثابتة لتعمل المعاملات بسلاسة)
+    # B26: Mean
+    # B27: Recovery %
+    # B28: Standard Deviation (SD)
+    # B29: RSD %
+    # B30: LOD
+    # B31: LOQ
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -205,7 +209,7 @@ def generate_validation_excel(
         ("uA", "=B29/100"),
         ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
         ("uC", "=0.5*(1 - I17)/SQRT(3)"),
-        ("uD", "=1 - SQRT(B14)"),  # معادلة uD المبنية على 1 - SQRT(RSQ)
+        ("uD", "=1 - SQRT(B14)"),
         ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
         ("U expanded", "=2*I24"),
     ]
