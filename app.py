@@ -364,4 +364,3 @@ try:
     )
 except Exception as e:
     st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
-)
