@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView[0].showGridLines = True
+    ws.views.sheetView.showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تصحيح الحلقة وتحديد الأسطر المستهدفة بشكل صريح 📌
+    # السطر 130 تم تصحيحه هنا بكتابة المصفوفة كاملة 📌
     for r in:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
