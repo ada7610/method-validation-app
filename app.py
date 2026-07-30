@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView[0].showGridLines = True
+    ws.views.sheetView.showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -126,15 +126,24 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تم تمرير النطاق الرقمي الصريح لتجنب أي مشاكل بالمتصفح
-    for r in:
-        ws[f"A{r}"].font = font_bold
-        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"A{r}"].alignment = align_left
+    # التعديل الحاسم: إلغاء الحلقة التكرارية تماماً والتنسيق بشكل مباشر لحماية الخلايا 📌
+    ws["A14"].font = font_bold
+    ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A14"].alignment = align_left
+    ws["B14"].font = font_bold
+    ws["B14"].alignment = align_center
 
-        ws[f"B{r}"].font = font_bold
-        ws[f"B{r}"].fill = PatternFill(fill_type=None)
-        ws[f"B{r}"].alignment = align_center
+    ws["A15"].font = font_bold
+    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A15"].alignment = align_left
+    ws["B15"].font = font_bold
+    ws["B15"].alignment = align_center
+
+    ws["A16"].font = font_bold
+    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A16"].alignment = align_left
+    ws["B16"].font = font_bold
+    ws["B16"].alignment = align_center
 
     # 5. جدول Level 1 (العينات) - يبدأ دائماً من السطر 18 للرأس و 19 للبيانات
     start_sample_row = 19
@@ -288,10 +297,3 @@ def generate_validation_excel(
     return output.getvalue()
 
 
-# ==========================================
-# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI (مكتملة ومفتوحة)
-# ==========================================
-st.title("🧪 Method Validation & Uncertainty System")
-st.caption("A dynamic system for statistical analysis of analytical methods.")
-
-# 1. قسم الإعدادات العامة للاختبار
