@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (النسخة المستقرة الأصلية)
+# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -126,24 +126,15 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # التنسيقات المباشرة المستقرة
-    ws["A14"].font = font_bold
-    ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A14"].alignment = align_left
-    ws["B14"].font = font_bold
-    ws["B14"].alignment = align_center
+    # تم إصلاح السطر 129 المتسبب في المشكلة بما يتوافق مع بايثون الجديد
+    for r in:
+        ws[f"A{r}"].font = font_bold
+        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"A{r}"].alignment = align_left
 
-    ws["A15"].font = font_bold
-    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A15"].alignment = align_left
-    ws["B15"].font = font_bold
-    ws["B15"].alignment = align_center
-
-    ws["A16"].font = font_bold
-    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A16"].alignment = align_left
-    ws["B16"].font = font_bold
-    ws["B16"].alignment = align_center
+        ws[f"B{r}"].font = font_bold
+        ws[f"B{r}"].fill = PatternFill(fill_type=None)
+        ws[f"B{r}"].alignment = align_center
 
     # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
@@ -185,7 +176,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
-    # الملاحظة الرمادية الجانبية
+    # الملاحظة الرمادية
     ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
@@ -196,7 +187,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات (مواقع ثابتة في الخلايا)
+    # 6. ملخص الإحصائيات
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -266,43 +257,3 @@ def generate_validation_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
-
-
-# ==========================================
-# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI (مربعات نصية سلسة ومضمونة 100%)
-# ==========================================
-st.title("🧪 Method Validation & Uncertainty System")
-st.caption("A reliable system for statistical analysis of analytical methods.")
-
-# 1. قسم الإعدادات العامة للاختبار
-st.header("📋 Test Metadata & Constants")
-col1, col2, col3 = st.columns(3)
-with col1:
-    test_title = st.text_input("Test / Parameter Name", "Assay of Paracetamol")
-    unit_str = st.text_input("Measurement Unit", "mg/L")
-with col2:
-    target_conc = st.number_input("Spiked / Target Concentration", value=100.0)
-    t_val = st.number_input(
-        "t-value (from t-table)", value=2.447, format="%.4f"
-    )
-with col3:
-    std_purity = st.number_input(
-        "Standard Purity (%)", value=99.5, format="%.2f"
-    )
-
-st.markdown("---")
-
-# 2. قسم إدخال البيانات بمربعات نصية سلسة ومقاومة لأخطاء الأقواس والتفسير
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.header("📊 1. Calibration Data")
-    st.caption("💡 اكتب تركيز المعايرة يليه المساحة (تفصل بينهما فاصلة)، سطر لكل مستوى:")
-    calib_input = st.text_area(
-        "Concentration, Area",
-        value="20, 15000\n40, 31000\n60, 44000\n80, 59000\n100, 75000",
-        height=180,
-    )
-
-with col_right:
-    st.header("🧪 2. Samples Data (Level 1)")
