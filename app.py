@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
+# 📊 دالة إنشاء ملف Excel المنسق (ديناميكية لمنع خطأ الإكسل)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -168,15 +168,25 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
+    end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
+
+    # 📌 حساب الصفوف ديناميكياً لتفادي التعارض مع أي عدد عينات
+    stats_start_row = end_sample_row + 2
+    mean_row = stats_start_row
+    rec_row = stats_start_row + 1
+    sd_row = stats_start_row + 2
+    rsd_row = stats_start_row + 3
+    lod_row = stats_start_row + 4
+    loq_row = stats_start_row + 5
+
+    for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
-        ws[f"D{r}"] = f"=IF(B$28=0, 0, ABS(B{r}-B$26)/B$28)"
+        ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
         ws[f"E{r}"].alignment = align_center
 
-    end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
-
-    # الملاحظة الرمادية
-    ws.merge_cells("F19:F24")
+    # الملاحظة الرمادية الجانبية
+    ws.merge_cells(f"F19:F{max(19, end_sample_row)}")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
     )
@@ -186,7 +196,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات
+    # 6. ملخص الإحصائيات (موقع ديناميكي تحت العينات)
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -194,12 +204,14 @@ def generate_validation_excel(
             "Standerd Deviation",
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
-        ("RSD %", f"=IF(B26=0, 0, (B28/B26)*100)"),
-        ("LOD", f"=B15*B28"),
-        ("LOQ", f"=10*B28"),
+        ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
+        ("LOD", f"=B15*B{sd_row}"),
+        ("LOQ", f"=10*B{sd_row}"),
     ]
 
-    for i, (label, formula) in enumerate(stats_labels, start=26):
+    for i, (label, formula) in enumerate(
+        stats_labels, start=stats_start_row
+    ):
         ws[f"A{i}"] = label
         ws[f"A{i}"].font = font_bold
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
@@ -224,8 +236,8 @@ def generate_validation_excel(
     ws["I17"] = purity_val
 
     unc_labels = [
-        ("uA", "=B29/100"),
-        ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
+        ("uA", f"=B{rsd_row}/100"),
+        ("uB", f"=0.5*(1 - (B{rec_row}/100))/SQRT(3)"),
         ("uC", "=0.5*(1 - I17)/SQRT(3)"),
         ("uD", "=1 - SQRT(B14)"),
         ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
@@ -299,9 +311,12 @@ valid_std = st.data_editor(
 st.divider()
 
 # ------------------------------------------
-# 2. جدول العينات والمدخلات الإضافية
+# 2. جدول العينات والمدخلات (Level 1) - مفتوح وديناميكي
 # ------------------------------------------
 st.subheader("📋 جدول العينات والمدخلات (Level 1)")
+st.caption(
+    "💡 يمكنك إضافة أي عدد من العينات بضغط زر (+ Add row) في أسفل الجدول"
+)
 
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
@@ -323,25 +338,27 @@ with col_input3:
         help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
     )
 
-num_samples = st.number_input(
-    "عدد التكراريات / العينات (Number of Replicates)",
-    min_value=1,
-    max_value=30,
-    value=6,
-    step=1,
+# عينات افتراضية مبدئية مع زر (+ Add row) مفتوح ديناميكياً
+initial_samples = pd.DataFrame(
+    [{"Sample Name": f"Sample {i+1}", "Concentration": 0.0} for i in range(6)]
 )
 
-sample_data = [
-    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0}
-    for i in range(num_samples)
-]
-
-edited_samples = st.data_editor(
-    pd.DataFrame(sample_data),
-    num_rows="fixed",
-    key=f"samples_table_{num_samples}",
+edited_samples_raw = st.data_editor(
+    initial_samples,
+    num_rows="dynamic",
+    key="samples_table_dynamic",
     use_container_width=True,
 )
+
+# معالجة بيانات العينات لحمايتها قبل التصدير
+edited_samples = edited_samples_raw.dropna(how="all").copy()
+if "Sample Name" in edited_samples.columns:
+    edited_samples["Sample Name"] = edited_samples["Sample Name"].fillna("")
+if "Concentration" in edited_samples.columns:
+    edited_samples["Concentration"] = (
+        pd.to_numeric(edited_samples["Concentration"], errors="coerce")
+        .fillna(0.0)
+    )
 
 # ==========================================
 # 📥 قسم تصدير التقرير النهائي إلى Excel
