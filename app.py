@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # التعديل الحاسم: إلغاء الحلقة التكرارية تماماً والتنسيق بشكل مباشر لحماية الخلايا 📌
+    # التنسيقات المباشرة لضمان ثبات الخلايا
     ws["A14"].font = font_bold
     ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws["A14"].alignment = align_left
@@ -297,3 +297,4 @@ def generate_validation_excel(
     return output.getvalue()
 
 
+# ==========================================
