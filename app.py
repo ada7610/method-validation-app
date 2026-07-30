@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (تعديل: مرن وديناميكي بالكامل)
+# 📊 دالة إنشاء ملف Excel المنسق (مرن وديناميكي بالكامل)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تم تصحيح المصفوفة هنا بشكل نهائي وسليم 📌
+    # تصحيح الحلقة وتحديد الأسطر المستهدفة بشكل صريح 📌
     for r in:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
