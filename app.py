@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (النسخة المستقرة الثابتة)
+# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -126,24 +126,14 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تنسيق الخلايا الفردي المباشر
-    ws["A14"].font = font_bold
-    ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A14"].alignment = align_left
-    ws["B14"].font = font_bold
-    ws["B14"].alignment = align_center
+    for r in:
+        ws[f"A{r}"].font = font_bold
+        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"A{r}"].alignment = align_left
 
-    ws["A15"].font = font_bold
-    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A15"].alignment = align_left
-    ws["B15"].font = font_bold
-    ws["B15"].alignment = align_center
-
-    ws["A16"].font = font_bold
-    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["A16"].alignment = align_left
-    ws["B16"].font = font_bold
-    ws["B16"].alignment = align_center
+        ws[f"B{r}"].font = font_bold
+        ws[f"B{r}"].fill = PatternFill(fill_type=None)
+        ws[f"B{r}"].alignment = align_center
 
     # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
@@ -185,7 +175,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
-    # الملاحظة الرمادية الجانبية
+    # الملاحظة الرمادية
     ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
@@ -196,7 +186,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات (مواقع ثابتة في الخلايا)
+    # 6. ملخص الإحصائيات
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -269,7 +259,7 @@ def generate_validation_excel(
 
 
 # ==========================================
-# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI
+# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI (تكملة الكود الناقص)
 # ==========================================
 st.title("🧪 Method Validation & Uncertainty System")
 st.caption("A reliable system for statistical analysis of analytical methods.")
@@ -282,9 +272,13 @@ with col1:
     unit_str = st.text_input("Measurement Unit", "mg/L")
 with col2:
     target_conc = st.number_input("Spiked / Target Concentration", value=100.0)
-    t_val = st.number_input("t-value (from t-table)", value=2.447, format="%.4f")
+    t_val = st.number_input(
+        "t-value (from t-table)", value=2.447, format="%.4f"
+    )
 with col3:
-    std_purity = st.number_input("Standard Purity (%)", value=99.5, format="%.2f")
+    std_purity = st.number_input(
+        "Standard Purity (%)", value=99.5, format="%.2f"
+    )
 
 st.markdown("---")
 
@@ -293,7 +287,6 @@ col_left, col_right = st.columns(2)
 
 with col_left:
     st.header("📊 1. Calibration Data")
-    # إعداد الإطار التفاعلي الافتراضي للـ Calibration
     df_calib_init = pd.DataFrame(
         {
             "Level": ["Std 1", "Std 2", "Std 3", "Std 4", "Std 5"],
@@ -306,3 +299,12 @@ with col_left:
     )
 
 with col_right:
+    st.header("🧪 2. Samples Data (Level 1)")
+    st.caption("💡 التصميم مخصص لـ 7 تكراريات لحماية ثبات خلايا الإحصائيات")
+    df_samples_init = pd.DataFrame(
+        {
+            "Sample Name": [f"Replicate {i}" for i in range(1, 8)],
+            "Concentration": [98.5, 99.1, 100.2, 97.8, 99.6, 101.1, 98.9],
+        }
+    )
+    level1_data = st.data_editor(
