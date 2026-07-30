@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
+# 📊 دالة إنشاء ملف Excel المنسق (الأصلية الثابتة لـ 7 عينات)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView[0].showGridLines = True
+    ws.views.sheetView.showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -116,7 +116,7 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 4. خانات RSQ و t-value و Spiked Level
+    # 4. خانات RSQ و t-value و Spiked Level (تنسيق مباشر آمن)
     ws["A14"] = "RSQ"
     ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
 
@@ -126,14 +126,24 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    for r in [14, 15, 16]:
-        ws[f"A{r}"].font = font_bold
-        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"A{r}"].alignment = align_left
+    # تطبيق التنسيق الصريح بدون حلقات لمنع أخطاء التوليد البرمجي
+    ws["A14"].font = font_bold
+    ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A14"].alignment = align_left
+    ws["B14"].font = font_bold
+    ws["B14"].alignment = align_center
 
-        ws[f"B{r}"].font = font_bold
-        ws[f"B{r}"].fill = PatternFill(fill_type=None)
-        ws[f"B{r}"].alignment = align_center
+    ws["A15"].font = font_bold
+    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A15"].alignment = align_left
+    ws["B15"].font = font_bold
+    ws["B15"].alignment = align_center
+
+    ws["A16"].font = font_bold
+    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A16"].alignment = align_left
+    ws["B16"].font = font_bold
+    ws["B16"].alignment = align_center
 
     # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
@@ -175,7 +185,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
-    # الملاحظة الرمادية
+    # الملاحظة الرمادية الجانبية
     ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
@@ -186,7 +196,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات
+    # 6. ملخص الإحصائيات (مواقع ثابتة في الخلايا)
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -258,4 +268,44 @@ def generate_validation_excel(
     return output.getvalue()
 
 
-# ===========================
+# ==========================================
+# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI
+# ==========================================
+st.title("🧪 Method Validation & Uncertainty System")
+st.caption("A reliable system for statistical analysis of analytical methods.")
+
+# 1. قسم الإعدادات العامة للاختبار
+st.header("📋 Test Metadata & Constants")
+col1, col2, col3 = st.columns(3)
+with col1:
+    test_title = st.text_input("Test / Parameter Name", "Assay of Paracetamol")
+    unit_str = st.text_input("Measurement Unit", "mg/L")
+with col2:
+    target_conc = st.number_input("Spiked / Target Concentration", value=100.0)
+    t_val = st.number_input(
+        "t-value (from t-table)", value=2.447, format="%.4f"
+    )
+with col3:
+    std_purity = st.number_input(
+        "Standard Purity (%)", value=99.5, format="%.2f"
+    )
+
+st.markdown("---")
+
+# 2. قسم الجداول وإدخال البيانات بجداول تفاعلية لـ 7 عينات كحد أقصى للتصميم
+col_left, col_right = st.columns(2)
+
+with col_left:
+    st.header("📊 1. Calibration Data")
+    calib_data = st.data_editor(
+        pd.DataFrame(
+            {
+                "Level": ["Std 1", "Std 2", "Std 3", "Std 4", "Std 5"],
+                "Concentration": [20.0, 40.0, 60.0, 80.0, 100.0],
+                "Area": [15000.0, 31000.0, 44000.0, 59000.0, 75000.0],
+            }
+        ),
+        num_rows="dynamic",
+        use_container_width=True,
+    )
+
