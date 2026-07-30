@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (ديناميكية لمنع خطأ الإكسل)
+# 📊 دالة إنشاء ملف Excel المنسق (ديناميكية بالكامل)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -170,7 +170,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
-    # 📌 حساب الصفوف ديناميكياً لتفادي التعارض مع أي عدد عينات
+    # حساب الصفوف ديناميكياً لتفادي التعارض مع أي عدد عينات
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
@@ -284,29 +284,39 @@ with col_header2:
 st.divider()
 
 # ------------------------------------------
-# 1. جدول المعايرة القياسي (Calibration STD)
+# 1. جدول المعايرة القياسي (Calibration STD) - مفتوح وديناميكي
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
-
-num_calib_levels = st.number_input(
-    "عدد مستويات المعايرة (Calibration Levels)",
-    min_value=1,
-    max_value=30,
-    value=6,
-    step=1,
+st.caption(
+    "💡 يمكنك إضافة أو حذف أي عدد من مستويات المعايرة بضغط زر (+ Add row)"
 )
 
-calib_data = [
-    {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
-    for i in range(num_calib_levels)
-]
+initial_calib = pd.DataFrame(
+    [
+        {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
+        for i in range(6)
+    ]
+)
 
-valid_std = st.data_editor(
-    pd.DataFrame(calib_data),
-    num_rows="fixed",
-    key=f"calib_table_{num_calib_levels}",
+valid_std_raw = st.data_editor(
+    initial_calib,
+    num_rows="dynamic",  # 👈 أصبحت ديناميكية مفتوحة مثل العينات
+    key="calib_table_dynamic",
     use_container_width=True,
 )
+
+# معالجة بيانات جدول المعايرة قبل التمرير للإكسل
+valid_std = valid_std_raw.dropna(how="all").copy()
+if "Level" in valid_std.columns:
+    valid_std["Level"] = valid_std["Level"].fillna("")
+if "Concentration" in valid_std.columns:
+    valid_std["Concentration"] = (
+        pd.to_numeric(valid_std["Concentration"], errors="coerce").fillna(0.0)
+    )
+if "Area" in valid_std.columns:
+    valid_std["Area"] = (
+        pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
+    )
 
 st.divider()
 
@@ -338,7 +348,6 @@ with col_input3:
         help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
     )
 
-# عينات افتراضية مبدئية مع زر (+ Add row) مفتوح ديناميكياً
 initial_samples = pd.DataFrame(
     [{"Sample Name": f"Sample {i+1}", "Concentration": 0.0} for i in range(6)]
 )
@@ -350,7 +359,6 @@ edited_samples_raw = st.data_editor(
     use_container_width=True,
 )
 
-# معالجة بيانات العينات لحمايتها قبل التصدير
 edited_samples = edited_samples_raw.dropna(how="all").copy()
 if "Sample Name" in edited_samples.columns:
     edited_samples["Sample Name"] = edited_samples["Sample Name"].fillna("")
