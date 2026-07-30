@@ -126,6 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
+    # تم تصحيح السطر هنا 📌
     for r in:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
@@ -285,9 +286,3 @@ def generate_validation_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
-
-
-# ==========================================
-# 🛠️ الجزء المتبقي لبناء واجهة التشغيل المفتوحة (Streamlit UI)
-# ==========================================
-# (يمكنك استخدامه لاختبار الكود فوراً بوضع عينات غير محدودة)
