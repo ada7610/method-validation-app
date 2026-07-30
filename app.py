@@ -284,13 +284,14 @@ with col_header2:
 st.divider()
 
 # ------------------------------------------
-# 1. جدول المعايرة القياسي (Calibration STD) - مفتوح وديناميكي
+# 1. جدول المعايرة القياسي (Calibration STD) - أصلحت مشكلة عدم التغير هنا
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 st.caption(
     "💡 يمكنك إضافة أو حذف أي عدد من مستويات المعايرة بضغط زر (+ Add row)"
 )
 
+# البيانات المبدئية لجدول المعايرة
 initial_calib = pd.DataFrame(
     [
         {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
@@ -298,14 +299,15 @@ initial_calib = pd.DataFrame(
     ]
 )
 
+# جدول تفاعلي ومفتوح تماماً لجدول الاستاندرات
 valid_std_raw = st.data_editor(
     initial_calib,
-    num_rows="dynamic",  # 👈 أصبحت ديناميكية مفتوحة مثل العينات
-    key="calib_table_dynamic",
+    num_rows="dynamic",
+    key="calib_table_dynamic_v2",  # تم تحديث المفتاح لمنع التعارض مع الكاش القديم
     use_container_width=True,
 )
 
-# معالجة بيانات جدول المعايرة قبل التمرير للإكسل
+# تنظيف ومعالجة البيانات المدخلة في الاستاندرات
 valid_std = valid_std_raw.dropna(how="all").copy()
 if "Level" in valid_std.columns:
     valid_std["Level"] = valid_std["Level"].fillna("")
@@ -355,7 +357,7 @@ initial_samples = pd.DataFrame(
 edited_samples_raw = st.data_editor(
     initial_samples,
     num_rows="dynamic",
-    key="samples_table_dynamic",
+    key="samples_table_dynamic_v2",
     use_container_width=True,
 )
 
