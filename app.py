@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView.showGridLines = True
+    ws.views.sheetView[0].showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -126,7 +126,6 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تم إصلاح السطر 129 المتسبب في المشكلة بما يتوافق مع بايثون الجديد
     for r in:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
@@ -257,3 +256,6 @@ def generate_validation_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
+
+# ==========================================
