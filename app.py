@@ -1,3 +1,37 @@
+import io
+import openpyxl
+from openpyxl.chart import Reference, ScatterChart, Series
+from openpyxl.styles import Alignment, Font, PatternFill
+import pandas as pd
+import streamlit as st
+
+# ==========================================
+# 🎨 إعدادات الصفحة والشريط الجانبي (الحقوق في البرنامج)
+# ==========================================
+st.set_page_config(
+    page_title="Method Validation System | Abdulrahman Alamri",
+    page_icon="🧪",
+    layout="wide",
+)
+
+# 👈 الحقوق في الشريط الجانبي (Sidebar)
+with st.sidebar:
+    st.header("👑 Developer Info")
+    st.markdown("""
+    **Developed & Designed By:**  
+    👨‍🔬 **Abdulrahman Alamri**  
+    
+    **Specialization:**  
+    🔬 Quality Control & Method Validation Specialist  
+    
+    ---
+    *All Rights Reserved © 2026*
+    """)
+
+
+# ==========================================
+# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
+# ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
 ):
@@ -134,26 +168,15 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
-    end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
-
-    # 📌 حساب صفوف الإحصائيات ديناميكياً لتجنب التداخل!
-    stats_start_row = end_sample_row + 2
-    mean_row = stats_start_row
-    rec_row = stats_start_row + 1
-    sd_row = stats_start_row + 2
-    rsd_row = stats_start_row + 3
-    lod_row = stats_start_row + 4
-    loq_row = stats_start_row + 5
-
-    # كود صياغة حساب العينات بالصفوف الديناميكية للإحصائيات
-    for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
-        ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
+        ws[f"D{r}"] = f"=IF(B$28=0, 0, ABS(B{r}-B$26)/B$28)"
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
         ws[f"E{r}"].alignment = align_center
 
+    end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
+
     # الملاحظة الرمادية
-    ws.merge_cells(f"F19:F{max(19, end_sample_row)}")
+    ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
     )
@@ -163,7 +186,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات (موقع ديناميكي)
+    # 6. ملخص الإحصائيات
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -171,14 +194,12 @@ def generate_validation_excel(
             "Standerd Deviation",
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
-        ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
-        ("LOD", f"=B15*B{sd_row}"),
-        ("LOQ", f"=10*B{sd_row}"),
+        ("RSD %", f"=IF(B26=0, 0, (B28/B26)*100)"),
+        ("LOD", f"=B15*B28"),
+        ("LOQ", f"=10*B28"),
     ]
 
-    for i, (label, formula) in enumerate(
-        stats_labels, start=stats_start_row
-    ):
+    for i, (label, formula) in enumerate(stats_labels, start=26):
         ws[f"A{i}"] = label
         ws[f"A{i}"].font = font_bold
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
@@ -203,8 +224,8 @@ def generate_validation_excel(
     ws["I17"] = purity_val
 
     unc_labels = [
-        ("uA", f"=B{rsd_row}/100"),
-        ("uB", f"=0.5*(1 - (B{rec_row}/100))/SQRT(3)"),
+        ("uA", "=B29/100"),
+        ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
         ("uC", "=0.5*(1 - I17)/SQRT(3)"),
         ("uD", "=1 - SQRT(B14)"),
         ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
@@ -235,3 +256,129 @@ def generate_validation_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
+
+# ==========================================
+# ⚙️ واجهة المستخدم (Streamlit UI)
+# ==========================================
+st.title("🧪 نظام التحقق من كفاءة الطرق التحليلية")
+
+col_header1, col_header2 = st.columns(2)
+with col_header1:
+    test_name = st.text_input("اسم الاختبار / التحليل", "")
+with col_header2:
+    conc_unit = st.text_input("وحدة التركيز", "")
+
+st.divider()
+
+# ------------------------------------------
+# 1. جدول المعايرة القياسي (Calibration STD)
+# ------------------------------------------
+st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
+
+num_calib_levels = st.number_input(
+    "عدد مستويات المعايرة (Calibration Levels)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+)
+
+calib_data = [
+    {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
+    for i in range(num_calib_levels)
+]
+
+valid_std = st.data_editor(
+    pd.DataFrame(calib_data),
+    num_rows="fixed",
+    key=f"calib_table_{num_calib_levels}",
+    use_container_width=True,
+)
+
+st.divider()
+
+# ------------------------------------------
+# 2. جدول العينات والمدخلات الإضافية
+# ------------------------------------------
+st.subheader("📋 جدول العينات والمدخلات (Level 1)")
+
+col_input1, col_input2, col_input3 = st.columns(3)
+with col_input1:
+    target_conc = st.number_input(
+        "مستوى الإضافة (Spiked Level)", value=0.0, min_value=0.0
+    )
+with col_input2:
+    t_val = st.number_input(
+        "قيمة t-statistic (لحسبة LOD)",
+        value=0.0,
+        help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
+    )
+with col_input3:
+    std_purity = st.number_input(
+        "نقاوة المحلول القياسي (Standard Purity)",
+        value=0.99,
+        min_value=0.0,
+        max_value=100.0,
+        help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
+    )
+
+num_samples = st.number_input(
+    "عدد التكراريات / العينات (Number of Replicates)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+)
+
+sample_data = [
+    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0}
+    for i in range(num_samples)
+]
+
+edited_samples = st.data_editor(
+    pd.DataFrame(sample_data),
+    num_rows="fixed",
+    key=f"samples_table_{num_samples}",
+    use_container_width=True,
+)
+
+# ==========================================
+# 📥 قسم تصدير التقرير النهائي إلى Excel
+# ==========================================
+st.divider()
+
+try:
+    calib_export = (
+        valid_std[["Level", "Concentration", "Area"]]
+        if not valid_std.empty
+        else pd.DataFrame(columns=["Level", "Concentration", "Area"])
+    )
+
+    excel_file = generate_validation_excel(
+        calib_df=calib_export,
+        level1_df=edited_samples,
+        test_title=test_name,
+        unit_str=conc_unit,
+        target_conc=target_conc,
+        t_val=t_val,
+        std_purity=std_purity,
+    )
+
+    st.download_button(
+        label="📥 تحميل تقرير Validation Excel المنسق (مع دوال تفاعلية)",
+        data=excel_file,
+        file_name="Method_Validation_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+    )
+except Exception as e:
+    st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
+
+# ------------------------------------------
+# 🔻 الحقوق في الفوتر (أسفل برنامج Streamlit)
+# ------------------------------------------
+st.caption("---")
+st.caption(
+    "Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026"
+)
