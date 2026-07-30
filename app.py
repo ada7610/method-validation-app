@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView.showGridLines = True
+    ws.views.sheetView[0].showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -116,7 +116,7 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 4. خانات RSQ و t-value و Spiked Level (تنسيق صريح آمن)
+    # 4. خانات RSQ و t-value و Spiked Level
     ws["A14"] = "RSQ"
     ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
 
@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تطبيق التنسيق الآمن المباشر للخلايا بدلاً من الحلقات التكرارية الفارغة
+    # تنسيق الخلايا الفردي المباشر
     ws["A14"].font = font_bold
     ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws["A14"].alignment = align_left
@@ -282,13 +282,9 @@ with col1:
     unit_str = st.text_input("Measurement Unit", "mg/L")
 with col2:
     target_conc = st.number_input("Spiked / Target Concentration", value=100.0)
-    t_val = st.number_input(
-        "t-value (from t-table)", value=2.447, format="%.4f"
-    )
+    t_val = st.number_input("t-value (from t-table)", value=2.447, format="%.4f")
 with col3:
-    std_purity = st.number_input(
-        "Standard Purity (%)", value=99.5, format="%.2f"
-    )
+    std_purity = st.number_input("Standard Purity (%)", value=99.5, format="%.2f")
 
 st.markdown("---")
 
@@ -297,13 +293,16 @@ col_left, col_right = st.columns(2)
 
 with col_left:
     st.header("📊 1. Calibration Data")
+    # إعداد الإطار التفاعلي الافتراضي للـ Calibration
+    df_calib_init = pd.DataFrame(
+        {
+            "Level": ["Std 1", "Std 2", "Std 3", "Std 4", "Std 5"],
+            "Concentration": [20.0, 40.0, 60.0, 80.0, 100.0],
+            "Area": [15000.0, 31000.0, 44000.0, 59000.0, 75000.0],
+        }
+    )
     calib_data = st.data_editor(
-        pd.DataFrame(
-            {
-                "Level": ["Std 1", "Std 2", "Std 3", "Std 4", "Std 5"],
-                "Concentration": [20.0, 40.0, 60.0, 80.0, 100.0],
-                "Area": [15000.0, 31000.0, 44000.0, 59000.0, 75000.0],
-            }
-        ),
-        num_rows="dynamic",
-        use_container_width=True,
+        df_calib_init, num_rows="dynamic", use_container_width=True
+    )
+
+with col_right:
