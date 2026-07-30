@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (ديناميكية بالكامل)
+# 📊 دالة إنشاء ملف Excel المنسق (ديناميكية 100% لمنع التداخل)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -65,7 +65,7 @@ def generate_validation_excel(
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    # 2. جدول Calibration STD
+    # 2. جدول Calibration STD (يبدأ من الصف 4)
     ws.merge_cells("A4:C4")
     ws["A4"] = "Calibration STD"
     ws["A4"].font = font_bold
@@ -82,8 +82,10 @@ def generate_validation_excel(
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"{col}5"].alignment = align_center
 
+    # كتابة قيم المعايرة وحساب أسطر البداية والنهاية
+    start_cal_row = 6
     for idx, row in calib_df.iterrows():
-        r = idx + 6
+        r = idx + start_cal_row
         ws[f"A{r}"] = str(row.get("Level", ""))
         ws[f"B{r}"] = (
             float(row.get("Concentration", 0))
@@ -94,15 +96,19 @@ def generate_validation_excel(
             float(row.get("Area", 0)) if pd.notnull(row.get("Area")) else 0.0
         )
 
-    max_cal_row = max(len(calib_df) + 5, 6)
+    end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
     # 3. الرسم البياني (Scatter Chart)
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
     chart.style = 13
 
-    xvalues = Reference(ws, min_col=2, min_row=6, max_row=max_cal_row)
-    yvalues = Reference(ws, min_col=3, min_row=6, max_row=max_cal_row)
+    xvalues = Reference(
+        ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
+    )
+    yvalues = Reference(
+        ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row
+    )
 
     series = Series(yvalues, xvalues, title_from_data=False)
     series.marker.symbol = "circle"
@@ -116,17 +122,23 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 4. خانات RSQ و t-value و Spiked Level
-    ws["A14"] = "RSQ"
-    ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
+    # 4. موقع خانات RSQ و t-value و Spiked Level (تتزحزح ديناميكياً تحت جدول المعايرة)
+    rsq_row = end_cal_row + 2
+    tval_row = rsq_row + 1
+    spiked_row = tval_row + 1
 
-    ws["A15"] = "t-value (t test)"
-    ws["B15"] = float(t_val)
+    ws[f"A{rsq_row}"] = "RSQ"
+    ws[f"B{rsq_row}"] = (
+        f"=RSQ(C{start_cal_row}:C{end_cal_row}, B{start_cal_row}:B{end_cal_row})"
+    )
 
-    ws["A16"] = "Spiked Level"
-    ws["B16"] = float(target_conc)
+    ws[f"A{tval_row}"] = "t-value (t test)"
+    ws[f"B{tval_row}"] = float(t_val)
 
-    for r in [14, 15, 16]:
+    ws[f"A{spiked_row}"] = "Spiked Level"
+    ws[f"B{spiked_row}"] = float(target_conc)
+
+    for r in [rsq_row, tval_row, spiked_row]:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"A{r}"].alignment = align_left
@@ -135,12 +147,18 @@ def generate_validation_excel(
         ws[f"B{r}"].fill = PatternFill(fill_type=None)
         ws[f"B{r}"].alignment = align_center
 
-    # 5. جدول Level 1 (العينات)
-    ws.merge_cells("A17:E17")
-    ws["A17"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
-    ws["A17"].font = font_bold
-    ws["A17"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-    ws["A17"].alignment = align_center
+    # 5. جدول Level 1 (العينات) - يتزحزح تلقائياً تحت خانة Spiked Level
+    l1_title_row = spiked_row + 2
+    l1_header_row = l1_title_row + 1
+    start_sample_row = l1_header_row + 1
+
+    ws.merge_cells(f"A{l1_title_row}:E{l1_title_row}")
+    ws[f"A{l1_title_row}"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
+    ws[f"A{l1_title_row}"].font = font_bold
+    ws[f"A{l1_title_row}"].fill = PatternFill(
+        "solid", fgColor=COLOR_BLUE_HEADER
+    )
+    ws[f"A{l1_title_row}"].alignment = align_center
 
     headers_l1 = [
         "Samples name",
@@ -151,12 +169,13 @@ def generate_validation_excel(
     ]
     cols_l1 = ["A", "B", "C", "D", "E"]
     for c, h in zip(cols_l1, headers_l1):
-        ws[f"{c}18"] = h
-        ws[f"{c}18"].font = font_bold
-        ws[f"{c}18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{c}18"].alignment = align_center
+        ws[f"{c}{l1_header_row}"] = h
+        ws[f"{c}{l1_header_row}"].font = font_bold
+        ws[f"{c}{l1_header_row}"].fill = PatternFill(
+            "solid", fgColor=COLOR_ORANGE_HEADER
+        )
+        ws[f"{c}{l1_header_row}"].alignment = align_center
 
-    start_sample_row = 19
     for idx, row in level1_df.iterrows():
         r = idx + start_sample_row
         ws[f"A{r}"] = str(row.get("Sample Name", ""))
@@ -168,9 +187,9 @@ def generate_validation_excel(
         )
         ws[f"B{r}"] = sample_conc
 
-    end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
+    end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # حساب الصفوف ديناميكياً لتفادي التعارض مع أي عدد عينات
+    # 6. الإحصائيات (تتزحزح ديناميكياً تحت العينات وتستهدف خلايا Spiked و t-value الصحيحة)
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
@@ -180,23 +199,24 @@ def generate_validation_excel(
     loq_row = stats_start_row + 5
 
     for r in range(start_sample_row, end_sample_row + 1):
-        ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
+        ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
         ws[f"E{r}"].alignment = align_center
 
     # الملاحظة الرمادية الجانبية
-    ws.merge_cells(f"F19:F{max(19, end_sample_row)}")
-    ws["F19"] = (
+    ws.merge_cells(f"F{start_sample_row}:F{end_sample_row}")
+    ws[f"F{start_sample_row}"] = (
         "Any value higher than the critical value in the table is consider outlier"
     )
-    ws["F19"].font = Font(name="Calibri", size=9, bold=True)
-    ws["F19"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
-    ws["F19"].alignment = Alignment(
+    ws[f"F{start_sample_row}"].font = Font(name="Calibri", size=9, bold=True)
+    ws[f"F{start_sample_row}"].fill = PatternFill(
+        "solid", fgColor=COLOR_GRAY_NOTE
+    )
+    ws[f"F{start_sample_row}"].alignment = Alignment(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات (موقع ديناميكي تحت العينات)
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -205,7 +225,7 @@ def generate_validation_excel(
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
         ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
-        ("LOD", f"=B15*B{sd_row}"),
+        ("LOD", f"=B{tval_row}*B{sd_row}"),
         ("LOQ", f"=10*B{sd_row}"),
     ]
 
@@ -217,39 +237,58 @@ def generate_validation_excel(
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
 
-    # 7. جدول Measurement Uncertainty
-    ws.merge_cells("H18:I18")
-    ws["H18"] = "Measurment uncertainty"
-    ws["H18"].font = font_bold
-    ws["H18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws["H18"].alignment = align_center
+    # 7. جدول Measurement Uncertainty (مرتبط بالصفوف الديناميكية الجديدة)
+    unc_header_row = l1_header_row
+    unc_start_row = start_sample_row
 
-    ws.merge_cells("H19:I19")
-    ws["H19"] = "Level 1"
-    ws["H19"].font = font_bold
-    ws["H19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-    ws["H19"].alignment = align_center
+    ws.merge_cells(f"H{unc_header_row}:I{unc_header_row}")
+    ws[f"H{unc_header_row}"] = "Measurment uncertainty"
+    ws[f"H{unc_header_row}"].font = font_bold
+    ws[f"H{unc_header_row}"].fill = PatternFill(
+        "solid", fgColor=COLOR_ORANGE_HEADER
+    )
+    ws[f"H{unc_header_row}"].alignment = align_center
 
-    ws["H17"] = "Standard Purity"
-    ws["H17"].font = font_bold
+    ws.merge_cells(f"H{unc_start_row}:I{unc_start_row}")
+    ws[f"H{unc_start_row}"] = "Level 1"
+    ws[f"H{unc_start_row}"].font = font_bold
+    ws[f"H{unc_start_row}"].fill = PatternFill(
+        "solid", fgColor=COLOR_BLUE_HEADER
+    )
+    ws[f"H{unc_start_row}"].alignment = align_center
+
+    purity_row = unc_header_row - 1
+    ws[f"H{purity_row}"] = "Standard Purity"
+    ws[f"H{purity_row}"].font = font_bold
     purity_val = std_purity / 100.0 if std_purity > 1.0 else std_purity
-    ws["I17"] = purity_val
+    ws[f"I{purity_row}"] = purity_val
+
+    uA_row = unc_start_row + 1
+    uB_row = uA_row + 1
+    uC_row = uB_row + 1
+    uD_row = uC_row + 1
+    uComb_row = uD_row + 1
+    uExp_row = uComb_row + 1
 
     unc_labels = [
-        ("uA", f"=B{rsd_row}/100"),
-        ("uB", f"=0.5*(1 - (B{rec_row}/100))/SQRT(3)"),
-        ("uC", "=0.5*(1 - I17)/SQRT(3)"),
-        ("uD", "=1 - SQRT(B14)"),
-        ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
-        ("U expanded", "=2*I24"),
+        (uA_row, "uA", f"=B{rsd_row}/100"),
+        (uB_row, "uB", f"=0.5*(1 - (B{rec_row}/100))/SQRT(3)"),
+        (uC_row, "uC", f"=0.5*(1 - I{purity_row})/SQRT(3)"),
+        (uD_row, "uD", f"=1 - SQRT(B{rsq_row})"),
+        (
+            uComb_row,
+            "u combiend",
+            f"=SQRT(I{uA_row}^2 + I{uB_row}^2 + I{uC_row}^2 + I{uD_row}^2)",
+        ),
+        (uExp_row, "U expanded", f"=2*I{uComb_row}"),
     ]
 
-    for idx, (u_name, u_formula) in enumerate(unc_labels, start=20):
-        ws[f"H{idx}"] = u_name
-        ws[f"I{idx}"] = u_formula
+    for r_num, u_name, u_formula in unc_labels:
+        ws[f"H{r_num}"] = u_name
+        ws[f"I{r_num}"] = u_formula
         if u_name in ["u combiend", "U expanded"]:
-            ws[f"H{idx}"].font = font_bold
-            ws[f"I{idx}"].font = font_bold
+            ws[f"H{r_num}"].font = font_bold
+            ws[f"I{r_num}"].font = font_bold
 
     column_widths = {
         "A": 22,
@@ -284,7 +323,7 @@ with col_header2:
 st.divider()
 
 # ------------------------------------------
-# 1. جدول المعايرة القياسي (Calibration STD) - تم الحل بالتحديث الديناميكي
+# 1. جدول المعايرة القياسي (Calibration STD)
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 
@@ -309,7 +348,6 @@ valid_std_raw = st.data_editor(
     use_container_width=True,
 )
 
-# معالجة بيانات جدول المعايرة قبل التمرير للإكسل
 valid_std = valid_std_raw.dropna(how="all").copy()
 if "Level" in valid_std.columns:
     valid_std["Level"] = valid_std["Level"].fillna("")
