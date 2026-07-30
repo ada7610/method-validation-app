@@ -126,14 +126,24 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    for r in:
-        ws[f"A{r}"].font = font_bold
-        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"A{r}"].alignment = align_left
+    # تم مسح حلقة الـ for الفارغة واستبدالها بالتنسيق المباشر والآمن 📌
+    ws["A14"].font = font_bold
+    ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A14"].alignment = align_left
+    ws["B14"].font = font_bold
+    ws["B14"].alignment = align_center
 
-        ws[f"B{r}"].font = font_bold
-        ws[f"B{r}"].fill = PatternFill(fill_type=None)
-        ws[f"B{r}"].alignment = align_center
+    ws["A15"].font = font_bold
+    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A15"].alignment = align_left
+    ws["B15"].font = font_bold
+    ws["B15"].alignment = align_center
+
+    ws["A16"].font = font_bold
+    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A16"].alignment = align_left
+    ws["B16"].font = font_bold
+    ws["B16"].alignment = align_center
 
     # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
@@ -256,3 +266,44 @@ def generate_validation_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
+
+# ==========================================
+# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI (مربعات نصية سلسة ومضمونة)
+# ==========================================
+st.title("🧪 Method Validation & Uncertainty System")
+st.caption("A dynamic system for statistical analysis of analytical methods.")
+
+# 1. قسم الإعدادات العامة للاختبار
+st.header("📋 Test Metadata & Constants")
+col1, col2, col3 = st.columns(3)
+with col1:
+    test_title = st.text_input("Test / Parameter Name", "Assay of Paracetamol")
+    unit_str = st.text_input("Measurement Unit", "mg/L")
+with col2:
+    target_conc = st.number_input("Spiked / Target Concentration", value=100.0)
+    t_val = st.number_input(
+        "t-value (from t-table)", value=2.447, format="%.4f"
+    )
+with col3:
+    std_purity = st.number_input(
+        "Standard Purity (%)", value=99.5, format="%.2f"
+    )
+
+st.markdown("---")
+
+# 2. قسم الجداول وإدخل البيانات بمربعات نصية لمنع تعليق الكاش
+col_left, col_right = st.columns(2)
+
+with col_left:
+    st.header("📊 1. Calibration Data")
+    st.caption("💡 اكتب تركيز المعايرة يليه المساحة (تفصل بينهما فاصلة)، سطر لكل مستوى:")
+    calib_input = st.text_area(
+        "Concentration, Area",
+        value="20, 15000\n40, 31000\n60, 44000\n80, 59000\n100, 75000",
+        height=150,
+    )
+
+with col_right:
+    st.header("🧪 2. Samples Data (Level 1)")
+    st.caption("💡 اكتب تركيز العينات مباشرة (العدد محدود بـ 7 عينات كحد أقصى بالتصميم القديم):")
