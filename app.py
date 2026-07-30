@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (مرن وديناميكي بالكامل)
+# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -126,9 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تم الحل والإصلاح هنا بشكل نهائي 📌
-    rows_to_format = [14, 15, 16]
-    for r in rows_to_format:
+    for r in [14, 15, 16]:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"A{r}"].alignment = align_left
@@ -137,11 +135,7 @@ def generate_validation_excel(
         ws[f"B{r}"].fill = PatternFill(fill_type=None)
         ws[f"B{r}"].alignment = align_center
 
-    # 5. جدول Level 1 (العينات) - يبدأ دائماً من السطر 18 للرأس و 19 للبيانات
-    start_sample_row = 19
-    num_samples = len(level1_df) if len(level1_df) > 0 else 1
-    end_sample_row = start_sample_row + num_samples - 1
-
+    # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
     ws["A17"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
     ws["A17"].font = font_bold
@@ -162,16 +156,7 @@ def generate_validation_excel(
         ws[f"{c}18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"{c}18"].alignment = align_center
 
-    # حساب مواقع أسطر الإحصائيات المتحركة ديناميكياً
-    stats_start_row = end_sample_row + 2  # ترك سطر فارغ للأناقة
-    mean_row = stats_start_row
-    recovery_row = stats_start_row + 1
-    stdev_row = stats_start_row + 2
-    rsd_row = stats_start_row + 3
-    lod_row = stats_start_row + 4
-    loq_row = stats_start_row + 5
-
-    # تعبئة بيانات العينات مع ربط معادلات الـ Outlier بأسطر الإحصائيات الجديدة
+    start_sample_row = 19
     for idx, row in level1_df.iterrows():
         r = idx + start_sample_row
         ws[f"A{r}"] = str(row.get("Sample Name", ""))
@@ -184,14 +169,14 @@ def generate_validation_excel(
         ws[f"B{r}"] = sample_conc
 
         ws[f"C{r}"] = f"=IF(B16=0, 0, (B{r}/B16)*100)"
-        ws[f"D{r}"] = (
-            f"=IF(B${stdev_row}=0, 0, ABS(B{r}-B${mean_row})/B${stdev_row})"
-        )
+        ws[f"D{r}"] = f"=IF(B$28=0, 0, ABS(B{r}-B$26)/B$28)"
         ws[f"E{r}"] = f'=IF(D{r}<=2.57, "Normal", "Outlier")'
         ws[f"E{r}"].alignment = align_center
 
-    # الملاحظة الرمادية الجانبية - تتمدد تلقائياً مع حجم الجدول
-    ws.merge_cells(f"F19:F{max(end_sample_row, 24)}")
+    end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
+
+    # الملاحظة الرمادية
+    ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
     )
@@ -201,7 +186,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات (توليد في الأسطر الديناميكية الجديدة)
+    # 6. ملخص الإحصائيات
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -209,61 +194,45 @@ def generate_validation_excel(
             "Standerd Deviation",
             f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
         ),
-        ("RSD %", f"=IF(B{mean_row}=0, 0, (B{stdev_row}/B{mean_row})*100)"),
-        ("LOD", f"=B15*B{stdev_row}"),
-        ("LOQ", f"=10*B{stdev_row}"),
+        ("RSD %", f"=IF(B26=0, 0, (B28/B26)*100)"),
+        ("LOD", f"=B15*B28"),
+        ("LOQ", f"=10*B28"),
     ]
 
-    for i, (label, formula) in enumerate(stats_labels, start=stats_start_row):
+    for i, (label, formula) in enumerate(stats_labels, start=26):
         ws[f"A{i}"] = label
         ws[f"A{i}"].font = font_bold
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
 
-    # 7. جدول Measurement Uncertainty (بجانب جدول الإحصائيات للمحافظة على المظهر الجيد)
-    unc_start_row = stats_start_row
-    ws.merge_cells(f"H{unc_start_row}:I{unc_start_row}")
-    ws[f"H{unc_start_row}"] = "Measurment uncertainty"
-    ws[f"H{unc_start_row}"].font = font_bold
-    ws[f"H{unc_start_row}"].fill = PatternFill(
-        "solid", fgColor=COLOR_ORANGE_HEADER
-    )
-    ws[f"H{unc_start_row}"].alignment = align_center
+    # 7. جدول Measurement Uncertainty
+    ws.merge_cells("H18:I18")
+    ws["H18"] = "Measurment uncertainty"
+    ws["H18"].font = font_bold
+    ws["H18"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["H18"].alignment = align_center
 
-    ws.merge_cells(f"H{unc_start_row+1}:I{unc_start_row+1}")
-    ws[f"H{unc_start_row+1}"] = "Level 1"
-    ws[f"H{unc_start_row+1}"].font = font_bold
-    ws[f"H{unc_start_row+1}"].fill = PatternFill(
-        "solid", fgColor=COLOR_BLUE_HEADER
-    )
-    ws[f"H{unc_start_row+1}"].alignment = align_center
+    ws.merge_cells("H19:I19")
+    ws["H19"] = "Level 1"
+    ws["H19"].font = font_bold
+    ws["H19"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws["H19"].alignment = align_center
 
-    ws[f"H{unc_start_row-1}"] = "Standard Purity"
-    ws[f"H{unc_start_row-1}"].font = font_bold
+    ws["H17"] = "Standard Purity"
+    ws["H17"].font = font_bold
     purity_val = std_purity / 100.0 if std_purity > 1.0 else std_purity
-    ws[f"I{unc_start_row-1}"] = purity_val
-
-    # حساب أسطر متغيرات الارتياب بناءً على نقطة البداية الديناميكية
-    ua_row = unc_start_row + 2
-    ub_row = unc_start_row + 3
-    uc_row = unc_start_row + 4
-    ud_row = unc_start_row + 5
-    ucomb_row = unc_start_row + 6
-    uexp_row = unc_start_row + 7
+    ws["I17"] = purity_val
 
     unc_labels = [
-        ("uA", f"=B{lod_row}/100"),
-        ("uB", f"=0.5*(1 - (B{rsd_row}/100))/SQRT(3)"),
-        ("uC", f"=0.5*(1 - I{unc_start_row-1})/SQRT(3)"),
+        ("uA", "=B29/100"),
+        ("uB", "=0.5*(1 - (B27/100))/SQRT(3)"),
+        ("uC", "=0.5*(1 - I17)/SQRT(3)"),
         ("uD", "=1 - SQRT(B14)"),
-        (
-            "u combiend",
-            f"=SQRT(I{ua_row}^2 + I{ub_row}^2 + I{uc_row}^2 + I{ud_row}^2)",
-        ),
-        ("U expanded", f"=2*I{ucomb_row}"),
+        ("u combiend", "=SQRT(I20^2 + I21^2 + I22^2 + I23^2)"),
+        ("U expanded", "=2*I24"),
     ]
 
-    for idx, (u_name, u_formula) in enumerate(unc_labels, start=ua_row):
+    for idx, (u_name, u_formula) in enumerate(unc_labels, start=20):
         ws[f"H{idx}"] = u_name
         ws[f"I{idx}"] = u_formula
         if u_name in ["u combiend", "U expanded"]:
@@ -287,3 +256,6 @@ def generate_validation_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
+
+# ===========================
