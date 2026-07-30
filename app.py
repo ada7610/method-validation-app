@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (الأصلية الثابتة لـ 7 عينات)
+# 📊 دالة إنشاء ملف Excel المنسق (النسخة المستقرة الثابتة)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -116,7 +116,7 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 4. خانات RSQ و t-value و Spiked Level (تنسيق مباشر آمن)
+    # 4. خانات RSQ و t-value و Spiked Level (تنسيق صريح بدون الحلقات المكسورة)
     ws["A14"] = "RSQ"
     ws["B14"] = f"=RSQ(C6:C{max_cal_row}, B6:B{max_cal_row})"
 
@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تطبيق التنسيق الصريح بدون حلقات لمنع أخطاء التوليد البرمجي
+    # تطبيق التنسيق الأمن المباشر للخلايا لمنع أي مشاكل برمجية
     ws["A14"].font = font_bold
     ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws["A14"].alignment = align_left
@@ -306,6 +306,3 @@ with col_left:
             }
         ),
         num_rows="dynamic",
-        use_container_width=True,
-    )
-
