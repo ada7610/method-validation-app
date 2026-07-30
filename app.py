@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView[0].showGridLines = True
+    ws.views.sheetView.showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تنسيق الخلايا الفردي المباشر الصريح والآمن لمنع مشاكل الحلقات المستترة
+    # التنسيقات المباشرة المستقرة
     ws["A14"].font = font_bold
     ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws["A14"].alignment = align_left
@@ -196,7 +196,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات (مواقع ثابتة في الخلايا من السطر 26 إلى 31)
+    # 6. ملخص الإحصائيات (مواقع ثابتة في الخلايا)
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -269,7 +269,7 @@ def generate_validation_excel(
 
 
 # ==========================================
-# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI
+# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI (مربعات نصية سلسة ومضمونة 100%)
 # ==========================================
 st.title("🧪 Method Validation & Uncertainty System")
 st.caption("A reliable system for statistical analysis of analytical methods.")
@@ -292,16 +292,17 @@ with col3:
 
 st.markdown("---")
 
-# 2. قسم الجداول وإدخال البيانات بجداول تفاعلية لـ 7 عينات كحد أقصى للتصميم
+# 2. قسم إدخال البيانات بمربعات نصية سلسة ومقاومة لأخطاء الأقواس والتفسير
 col_left, col_right = st.columns(2)
 
 with col_left:
     st.header("📊 1. Calibration Data")
-    df_calib_init = pd.DataFrame(
-        {
-            "Level": ["Std 1", "Std 2", "Std 3", "Std 4", "Std 5"],
-            "Concentration": [20.0, 40.0, 60.0, 80.0, 100.0],
-            "Area": [15000.0, 31000.0, 44000.0, 59000.0, 75000.0],
-        }
+    st.caption("💡 اكتب تركيز المعايرة يليه المساحة (تفصل بينهما فاصلة)، سطر لكل مستوى:")
+    calib_input = st.text_area(
+        "Concentration, Area",
+        value="20, 15000\n40, 31000\n60, 44000\n80, 59000\n100, 75000",
+        height=180,
     )
-    calib_data = st.data_editor(
+
+with col_right:
+    st.header("🧪 2. Samples Data (Level 1)")
