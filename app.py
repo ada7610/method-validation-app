@@ -284,30 +284,32 @@ with col_header2:
 st.divider()
 
 # ------------------------------------------
-# 1. جدول المعايرة القياسي (Calibration STD) - أصلحت مشكلة عدم التغير هنا
+# 1. جدول المعايرة القياسي (Calibration STD) - تم الحل بالتحديث الديناميكي
 # ------------------------------------------
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
-st.caption(
-    "💡 يمكنك إضافة أو حذف أي عدد من مستويات المعايرة بضغط زر (+ Add row)"
+
+num_calib_levels = st.number_input(
+    "عدد مستويات المعايرة (Calibration Levels)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+    key="calib_num_input",
 )
 
-# البيانات المبدئية لجدول المعايرة
-initial_calib = pd.DataFrame(
-    [
-        {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
-        for i in range(6)
-    ]
-)
+calib_data = [
+    {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
+    for i in range(int(num_calib_levels))
+]
 
-# جدول تفاعلي ومفتوح تماماً لجدول الاستاندرات
 valid_std_raw = st.data_editor(
-    initial_calib,
+    pd.DataFrame(calib_data),
     num_rows="dynamic",
-    key="calib_table_dynamic_v2",  # تم تحديث المفتاح لمنع التعارض مع الكاش القديم
+    key=f"calib_table_editor_{num_calib_levels}",
     use_container_width=True,
 )
 
-# تنظيف ومعالجة البيانات المدخلة في الاستاندرات
+# معالجة بيانات جدول المعايرة قبل التمرير للإكسل
 valid_std = valid_std_raw.dropna(how="all").copy()
 if "Level" in valid_std.columns:
     valid_std["Level"] = valid_std["Level"].fillna("")
@@ -323,12 +325,9 @@ if "Area" in valid_std.columns:
 st.divider()
 
 # ------------------------------------------
-# 2. جدول العينات والمدخلات (Level 1) - مفتوح وديناميكي
+# 2. جدول العينات والمدخلات (Level 1)
 # ------------------------------------------
 st.subheader("📋 جدول العينات والمدخلات (Level 1)")
-st.caption(
-    "💡 يمكنك إضافة أي عدد من العينات بضغط زر (+ Add row) في أسفل الجدول"
-)
 
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
@@ -350,14 +349,24 @@ with col_input3:
         help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
     )
 
-initial_samples = pd.DataFrame(
-    [{"Sample Name": f"Sample {i+1}", "Concentration": 0.0} for i in range(6)]
+num_samples = st.number_input(
+    "عدد التكراريات / العينات (Number of Replicates)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+    key="samples_num_input",
 )
 
+sample_data = [
+    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0}
+    for i in range(int(num_samples))
+]
+
 edited_samples_raw = st.data_editor(
-    initial_samples,
+    pd.DataFrame(sample_data),
     num_rows="dynamic",
-    key="samples_table_dynamic_v2",
+    key=f"samples_table_editor_{num_samples}",
     use_container_width=True,
 )
 
