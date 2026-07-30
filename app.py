@@ -30,7 +30,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (بدون حقوق)
+# 📊 دالة إنشاء ملف Excel المنسق (النسخة المستقرة الأصلية)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -126,14 +126,24 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    for r in:
-        ws[f"A{r}"].font = font_bold
-        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"A{r}"].alignment = align_left
+    # تنسيق الخلايا الفردي المباشر الصريح والآمن لمنع مشاكل الحلقات المستترة
+    ws["A14"].font = font_bold
+    ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A14"].alignment = align_left
+    ws["B14"].font = font_bold
+    ws["B14"].alignment = align_center
 
-        ws[f"B{r}"].font = font_bold
-        ws[f"B{r}"].fill = PatternFill(fill_type=None)
-        ws[f"B{r}"].alignment = align_center
+    ws["A15"].font = font_bold
+    ws["A15"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A15"].alignment = align_left
+    ws["B15"].font = font_bold
+    ws["B15"].alignment = align_center
+
+    ws["A16"].font = font_bold
+    ws["A16"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+    ws["A16"].alignment = align_left
+    ws["B16"].font = font_bold
+    ws["B16"].alignment = align_center
 
     # 5. جدول Level 1 (العينات)
     ws.merge_cells("A17:E17")
@@ -175,7 +185,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, 19)
 
-    # الملاحظة الرمادية
+    # الملاحظة الرمادية الجانبية
     ws.merge_cells("F19:F24")
     ws["F19"] = (
         "Any value higher than the critical value in the table is consider outlier"
@@ -186,7 +196,7 @@ def generate_validation_excel(
         horizontal="center", vertical="center", wrap_text=True
     )
 
-    # 6. ملخص الإحصائيات
+    # 6. ملخص الإحصائيات (مواقع ثابتة في الخلايا من السطر 26 إلى 31)
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -259,7 +269,7 @@ def generate_validation_excel(
 
 
 # ==========================================
-# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI (تكملة الكود الناقص)
+# 🖥️ واجهة المستخدم الرسومية لـ Streamlit UI
 # ==========================================
 st.title("🧪 Method Validation & Uncertainty System")
 st.caption("A reliable system for statistical analysis of analytical methods.")
@@ -295,16 +305,3 @@ with col_left:
         }
     )
     calib_data = st.data_editor(
-        df_calib_init, num_rows="dynamic", use_container_width=True
-    )
-
-with col_right:
-    st.header("🧪 2. Samples Data (Level 1)")
-    st.caption("💡 التصميم مخصص لـ 7 تكراريات لحماية ثبات خلايا الإحصائيات")
-    df_samples_init = pd.DataFrame(
-        {
-            "Sample Name": [f"Replicate {i}" for i in range(1, 8)],
-            "Concentration": [98.5, 99.1, 100.2, 97.8, 99.6, 101.1, 98.9],
-        }
-    )
-    level1_data = st.data_editor(
