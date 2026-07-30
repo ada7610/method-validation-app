@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    for r in:
+    for r in [14, 15, 16]:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"A{r}"].alignment = align_left
@@ -259,3 +259,126 @@ def generate_validation_excel(
 
 
 # ==========================================
+# ⚙️ واجهة المستخدم (Streamlit UI)
+# ==========================================
+st.title("🧪 نظام التحقق من كفاءة الطرق التحليلية")
+
+col_header1, col_header2 = st.columns(2)
+with col_header1:
+    test_name = st.text_input("اسم الاختبار / التحليل", "")
+with col_header2:
+    conc_unit = st.text_input("وحدة التركيز", "")
+
+st.divider()
+
+# ------------------------------------------
+# 1. جدول المعايرة القياسي (Calibration STD)
+# ------------------------------------------
+st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
+
+num_calib_levels = st.number_input(
+    "عدد مستويات المعايرة (Calibration Levels)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+)
+
+calib_data = [
+    {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
+    for i in range(num_calib_levels)
+]
+
+valid_std = st.data_editor(
+    pd.DataFrame(calib_data),
+    num_rows="fixed",
+    key=f"calib_table_{num_calib_levels}",
+    use_container_width=True,
+)
+
+st.divider()
+
+# ------------------------------------------
+# 2. جدول العينات والمدخلات الإضافية
+# ------------------------------------------
+st.subheader("📋 جدول العينات والمدخلات (Level 1)")
+
+col_input1, col_input2, col_input3 = st.columns(3)
+with col_input1:
+    target_conc = st.number_input(
+        "مستوى الإضافة (Spiked Level)", value=0.0, min_value=0.0
+    )
+with col_input2:
+    t_val = st.number_input(
+        "قيمة t-statistic (لحسبة LOD)",
+        value=0.0,
+        help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
+    )
+with col_input3:
+    std_purity = st.number_input(
+        "نقاوة المحلول القياسي (Standard Purity)",
+        value=0.99,
+        min_value=0.0,
+        max_value=100.0,
+        help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
+    )
+
+num_samples = st.number_input(
+    "عدد التكراريات / العينات (Number of Replicates)",
+    min_value=1,
+    max_value=30,
+    value=6,
+    step=1,
+)
+
+sample_data = [
+    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0}
+    for i in range(num_samples)
+]
+
+edited_samples = st.data_editor(
+    pd.DataFrame(sample_data),
+    num_rows="fixed",
+    key=f"samples_table_{num_samples}",
+    use_container_width=True,
+)
+
+# ==========================================
+# 📥 قسم تصدير التقرير النهائي إلى Excel
+# ==========================================
+st.divider()
+
+try:
+    calib_export = (
+        valid_std[["Level", "Concentration", "Area"]]
+        if not valid_std.empty
+        else pd.DataFrame(columns=["Level", "Concentration", "Area"])
+    )
+
+    excel_file = generate_validation_excel(
+        calib_df=calib_export,
+        level1_df=edited_samples,
+        test_title=test_name,
+        unit_str=conc_unit,
+        target_conc=target_conc,
+        t_val=t_val,
+        std_purity=std_purity,
+    )
+
+    st.download_button(
+        label="📥 تحميل تقرير Validation Excel المنسق (مع دوال تفاعلية)",
+        data=excel_file,
+        file_name="Method_Validation_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+    )
+except Exception as e:
+    st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
+
+# ------------------------------------------
+# 🔻 الحقوق في الفوتر (أسفل برنامج Streamlit)
+# ------------------------------------------
+st.caption("---")
+st.caption(
+    "Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026"
+)
