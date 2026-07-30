@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # التنسيقات المباشرة لضمان ثبات الخلايا
+    # التنسيقات المباشرة الصريحة لكل خلية على حدة لإنهاء مشكلة حذف الأسطر
     ws["A14"].font = font_bold
     ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws["A14"].alignment = align_left
@@ -297,4 +297,3 @@ def generate_validation_excel(
     return output.getvalue()
 
 
-# ==========================================
