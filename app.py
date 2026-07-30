@@ -38,7 +38,7 @@ def generate_validation_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Validation Report"
-    ws.views.sheetView[0].showGridLines = True
+    ws.views.sheetView.showGridLines = True
 
     # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تطبيق التنسيق الآمن المباشر للخلايا
+    # تطبيق التنسيق الآمن المباشر للخلايا بدلاً من الحلقات التكرارية الفارغة
     ws["A14"].font = font_bold
     ws["A14"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws["A14"].alignment = align_left
@@ -307,6 +307,3 @@ with col_left:
         ),
         num_rows="dynamic",
         use_container_width=True,
-    )
-
-with col_right:
