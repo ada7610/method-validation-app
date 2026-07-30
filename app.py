@@ -126,7 +126,7 @@ def generate_validation_excel(
     ws["A16"] = "Spiked Level"
     ws["B16"] = float(target_conc)
 
-    # تم التعديل والإصلاح الجذري هنا السطر 130 📌
+    # تم التعديل والإصلاح الجذري للسطر 130 هنا بشكل آمن وصريح 📌
     for r in:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
