@@ -346,9 +346,10 @@ def generate_validation_excel(
     uComb_row = uD_row + 1
     uExp_row = uComb_row + 1
 
+    # تم تحديث صيغة uB لإضافة القيمة المطلقة ABS هنا:
     unc_labels = [
         (uA_row, "uA", f"=B{rsd_row}/100"),
-        (uB_row, "uB", f"=0.5*(1 - (B{rec_row}/100))/SQRT(3)"),
+        (uB_row, "uB", f"=ABS(0.5*(1 - (B{rec_row}/100)))/SQRT(3)"),
         (uC_row, "uC", f"=0.5*(1 - I{purity_row})/SQRT(3)"),
         (uD_row, "uD", f"=1 - SQRT(B{rsq_row})"),
         (
