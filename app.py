@@ -1,6 +1,7 @@
 import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
+from openpyxl.chart.axis import ChartLines
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import streamlit as st
@@ -46,8 +47,13 @@ def generate_validation_excel(
     COLOR_ORANGE_HEADER = "F4B084"
     COLOR_GRAY_NOTE = "D9D9D9"
 
+    # 🎨 ألوان تمييز جدول الكريتكال فاليو أوف جي (جديدة)
+    COLOR_PURPLE_HEADER = "7030A0"  # بنفسجي ملكي مميز
+    COLOR_PURPLE_SUB = "D9E1F2"  # بنفسجي/أزرق فاتح هادئ
+
     font_main_title = Font(name="Calibri", size=14, bold=True)
     font_bold = Font(name="Calibri", size=11, bold=True)
+    font_white_bold = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     font_regular = Font(name="Calibri", size=10)
     align_center = Alignment(
         horizontal="center", vertical="center", wrap_text=False
@@ -107,18 +113,18 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. 🌟 (التعديل المحتفظ به): جدول Critical Values of G (Table A.5) بالجانب الأيمن (J & K)
+    # 3. 🌟 تمييز جدول Critical Values of G (Table A.5) بألوان خاصة متميزة
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
-    ws["J4"].font = font_bold
-    ws["J4"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws["J4"].font = font_white_bold
+    ws["J4"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
     ws["J4"].alignment = align_center
 
     ws["J5"] = "Sample size"
     ws["K5"] = "Critical value"
     for col_ref in ["J5", "K5"]:
         ws[col_ref].font = font_bold
-        ws[col_ref].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[col_ref].fill = PatternFill("solid", fgColor=COLOR_PURPLE_SUB)
         ws[col_ref].alignment = align_center
         ws[col_ref].border = thin_border
 
@@ -142,10 +148,16 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. الرسم البياني الاصلي (Scatter Chart)
+    # 4. الرسم البياني للمعايرة (Scatter Chart) مع تفتيح خطوط الطول والعرض
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
     chart.style = 13
+
+    # 🎨 تعديل لون خطوط الطول والعرض لتصبح ناعمة مثل لون خلايا الأكسل (D9D9D9)
+    chart.x_axis.majorGridlines = ChartLines()
+    chart.x_axis.majorGridlines.spPr.line.solidFill = "D9D9D9"
+    chart.y_axis.majorGridlines = ChartLines()
+    chart.y_axis.majorGridlines.spPr.line.solidFill = "D9D9D9"
 
     xvalues = Reference(
         ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
@@ -241,10 +253,9 @@ def generate_validation_excel(
 
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
-        # الرجوع للمعادلة الأصلية الـ Z-score
         ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
 
-        # ربط الـ Outlier Status بجدول Critical values of G المضاف
+        # ربط الـ Outlier Status بجدول Critical values of G
         ws[f"E{r}"] = (
             f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
         )
