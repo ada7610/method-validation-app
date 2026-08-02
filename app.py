@@ -130,13 +130,18 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (مطابق للصورة تماماً)
+    # 4. المخطط البياني في الإكسل (مع إجبار إظهار أرقام المحاور وتنسيقها)
     chart = ScatterChart()
     chart.title = test_name if test_name else "Calibration Curve"
 
     chart.x_axis.title = unit_header
     chart.y_axis.title = "Area"
 
+    # تفعيل إظهار أرقام المحاور وضبط مواقعها بشكل قاطع
+    chart.x_axis.delete = False
+    chart.y_axis.delete = False
+    chart.x_axis.crosses = "autoZero"
+    chart.y_axis.crosses = "autoZero"
     chart.x_axis.tickLblPos = "nextTo"
     chart.y_axis.tickLblPos = "nextTo"
 
@@ -149,6 +154,7 @@ def generate_validation_excel(
     chart.plot_area.graphicalProperties = GraphicalProperties()
     chart.plot_area.graphicalProperties.noFill = True
 
+    # خطوط الشبكة للمحور X و Y
     chart.x_axis.majorGridlines = ChartLines()
     chart.x_axis.majorGridlines.graphicalProperties = GraphicalProperties()
     chart.x_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
