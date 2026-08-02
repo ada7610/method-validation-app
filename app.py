@@ -2,8 +2,6 @@ import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.chart.axis import ChartLines
-from openpyxl.chart.shapes import GraphicalProperties
-from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import streamlit as st
@@ -113,7 +111,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول Critical Values of G (P=0.05) مميز بالألوان البنفسجية
+    # 3. جدول Critical Values of G (P=0.05)
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -148,19 +146,14 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. الرسم البياني الاصلي (Scatter Chart) مع ضبط لون الشبكة بأسلوب آمن
+    # 4. الرسم البياني الأصلي (Scatter Chart) - آمن وبدون أخطاء
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
     chart.style = 13
 
-    # ✅ إعداد خطوط الشبكة برمادي خفيف مطابق لخطوط خلايا الأكسل
-    gridline_prop = GraphicalProperties(line=LineProperties(solidFill="D9D9D9"))
-
+    # إظهار خطوط الشبكة الرئيسية بشكل آمن للماك والويندوز
     chart.x_axis.majorGridlines = ChartLines()
-    chart.x_axis.majorGridlines.spPr = gridline_prop
-
     chart.y_axis.majorGridlines = ChartLines()
-    chart.y_axis.majorGridlines.spPr = gridline_prop
 
     xvalues = Reference(
         ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
