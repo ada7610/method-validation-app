@@ -8,7 +8,6 @@ from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import streamlit as st
 
 # ==========================================
@@ -32,62 +31,6 @@ with st.sidebar:
     ---
     *All Rights Reserved © 2026*
     """)
-
-
-# ==========================================
-# 📊 دالة رسم المنحنى للشاشة (Matplotlib)
-# ==========================================
-def generate_excel_style_chart_fig(calib_df, title_str=""):
-    fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
-
-    if not calib_df.empty and len(calib_df) > 0:
-        x = calib_df["Concentration"].values.astype(float)
-        y = calib_df["Area"].values.astype(float)
-
-        if len(x) > 1 and np.sum(x) > 0:
-            slope, intercept = np.polyfit(x, y, 1)
-            y_pred = slope * x + intercept
-            ss_res = np.sum((y - y_pred) ** 2)
-            ss_tot = np.sum((y - np.mean(y)) ** 2)
-            r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0.0
-        else:
-            slope, intercept, r_squared = 0.0, 0.0, 0.0
-
-        ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75, zorder=1)
-        ax.scatter(x, y, color='#4A90E2', s=45, zorder=3, edgecolors='#4A90E2')
-
-        x_max_val = max(x) * 1.25 if max(x) > 0 else 25.0
-        x_line = np.linspace(0, x_max_val, 100)
-        y_line = slope * x_line + intercept
-        ax.plot(x_line, y_line, color='#4A90E2', linestyle=':', linewidth=1.5, zorder=2)
-
-        sign = "+" if intercept >= 0 else "-"
-        equation_text = f"y = {slope:.4f}x {sign} {abs(intercept):.4f}\nR² = {r_squared:.4f}"
-        ax.text(0.68, 0.88, equation_text, transform=ax.transAxes,
-                fontsize=10, color='#333333', verticalalignment='top',
-                fontfamily='sans-serif')
-
-        y_max_val = max(y) * 1.10 if max(y) > 0 else 90.0
-        ax.set_xlim(0, x_max_val)
-        ax.set_ylim(0, y_max_val)
-    else:
-        ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75)
-        ax.set_xlim(0, 25.0)
-        ax.set_ylim(0, 90.0)
-
-    ax.yaxis.set_major_formatter('{x:.2f}')
-    ax.xaxis.set_major_formatter('{x:.2f}')
-
-    for spine in ax.spines.values():
-        spine.set_color('#BFBFBF')
-        spine.set_linewidth(1.0)
-
-    ax.tick_params(colors='#333333', labelsize=9.5)
-    ax.set_title(title_str if title_str else "", fontsize=13, fontweight='bold', pad=15, color='#262626')
-    plt.tight_layout()
-    return fig
 
 
 # ==========================================
@@ -187,7 +130,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (تم تصحيح معالجة العنوان لتجنب خطأ NoneType)
+    # 4. المخطط البياني في الإكسل
     chart = ScatterChart()
     chart.title = None  
 
@@ -423,10 +366,6 @@ if "Concentration" in valid_std.columns:
     valid_std["Concentration"] = pd.to_numeric(valid_std["Concentration"], errors="coerce").fillna(0.0)
 if "Area" in valid_std.columns:
     valid_std["Area"] = pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
-
-st.write("### 📈 معاينة المنحنى البياني")
-fig_chart = generate_excel_style_chart_fig(valid_std, title_str="")
-st.pyplot(fig_chart)
 
 st.divider()
 
