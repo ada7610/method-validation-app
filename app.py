@@ -56,7 +56,7 @@ def generate_excel_style_chart_fig(calib_df, title_str=""):
             slope, intercept, r_squared = 0.0, 0.0, 0.0
 
         ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75, zorder=1)
-        ax.plot(x, y, color='#4A90E2', linestyle='-', linewidth=1.2, zorder=2)
+        # تم إزالة الخط المتصل من الشاشة أيضاً ليطابق إكسل تماماً
         ax.scatter(x, y, color='#4A90E2', s=45, zorder=3, edgecolors='#4A90E2')
 
         x_max_val = max(x) * 1.25 if max(x) > 0 else 25.0
@@ -86,7 +86,6 @@ def generate_excel_style_chart_fig(calib_df, title_str=""):
         spine.set_linewidth(1.0)
 
     ax.tick_params(colors='#333333', labelsize=9.5)
-    # العنوان يترك فارغاً بناءً على الطلب ليدخل يدوياً
     ax.set_title(title_str if title_str else "", fontsize=13, fontweight='bold', pad=15, color='#262626')
     plt.tight_layout()
     return fig
@@ -124,7 +123,7 @@ def generate_validation_excel(
         top=thin_border_side, bottom=thin_border_side
     )
 
-    # 1. العنوان الرئيسي
+    # 1. العنوان الرئيسي للملف
     title_text = f"Calculation of Validation for {test_title}" if test_title else "Calculation of Validation"
     ws.merge_cells("A1:K1")
     ws["A1"] = title_text
@@ -189,9 +188,9 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (عنوان فارغ + خطوط الخلايا الافتراضية + قيم X و Y + نقاط متصلة وخط اتجاه متقطع)
+    # 4. المخطط البياني في الإكسل (إلغاء الخط المتصل تماماً + ترك النقاط وخط الاتجاه المقطع)
     chart = ScatterChart()
-    chart.title = ""  # ترك العنوان فارغاً ليدخل يدوياً
+    chart.title = None  
     chart.title.overlay = False
 
     chart.graphicalProperties = GraphicalProperties()
@@ -200,7 +199,6 @@ def generate_validation_excel(
     chart.plot_area.graphicalProperties = GraphicalProperties()
     chart.plot_area.graphicalProperties.noFill = True
 
-    # الاعتماد على إعدادات أكسل لشبكة المحاور لتكون بـ لون خلايا أكسل
     chart.x_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines = ChartLines()
 
@@ -214,17 +212,16 @@ def generate_validation_excel(
     series.marker.symbol = "circle"
     series.marker.size = 6
     
-    # الخط الواصل بين النقاط
-    series.graphicalProperties.line.solidFill = "4A90E2"
-    series.graphicalProperties.line.width = 12700
+    # 🚫 إخفاء الخط المتصل الذي يربط بين النقاط نهائياً
+    series.graphicalProperties.line.noFill = True
 
-    # إظهار قيم Y و X على النقاط
+    # إظهار قيم Y و X على النقاط داخل المخطط
     series.dataLabels = DataLabelList()
     series.dataLabels.showVal = True
     series.dataLabels.showCatName = False
     series.dataLabels.showSerName = False
 
-    # خط الاتجاه المستقيم المقطع (sysDot) مع المعادلة و R²
+    # خط الاتجاه المستقيم المقطع (sysDot) مع إظهار المعادلة و R²
     trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
@@ -485,7 +482,7 @@ try:
     )
 
     st.download_button(
-        label="📥 تحميل تقرير Validation Excel المصدر بالشكل المطلوب",
+        label="📥 تحميل تقرير Validation Excel المصدر بالشكل النهائي المطلوب",
         data=excel_file,
         file_name="Method_Validation_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
