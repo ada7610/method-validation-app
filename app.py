@@ -32,7 +32,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق
+# 📊 دالة إنشاء ملف Excel المنسق (4 أرقام عشرية)
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -108,6 +108,8 @@ def generate_validation_excel(
         ws[f"C{r}"] = (
             float(row.get("Area", 0)) if pd.notnull(row.get("Area")) else 0.0
         )
+        ws[f"B{r}"].number_format = "0.0000"
+        ws[f"C{r}"].number_format = "0.0000"
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
@@ -141,12 +143,13 @@ def generate_validation_excel(
         ws[f"J{row_idx}"] = n_val
         ws[f"K{row_idx}"] = g_crit
         ws[f"J{row_idx}"].alignment = align_center
+        ws[f"K{row_idx}"].number_format = "0.0000"
 
         for c in ["J", "K"]:
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المنحنى القياسي
+    # 4. المنحنى القياسي (تم جعل X = Area و Y = Concentration)
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "B1"
     chart.title.overlay = False
@@ -169,11 +172,13 @@ def generate_validation_excel(
     chart.x_axis.number_format = "0.0000"
     chart.y_axis.number_format = "0.0000"
 
+    # المحور X أصبح المساحة Area (العامود C / Column 3)
     xvalues = Reference(
-        ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
-    )
-    yvalues = Reference(
         ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row
+    )
+    # المحور Y أصبح التركيز Concentration (العامود B / Column 2)
+    yvalues = Reference(
+        ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
     )
 
     series = Series(yvalues, xvalues, title_from_data=False)
@@ -223,6 +228,7 @@ def generate_validation_excel(
         ws[f"B{r}"].font = font_bold
         ws[f"B{r}"].fill = PatternFill(fill_type=None)
         ws[f"B{r}"].alignment = align_center
+        ws[f"B{r}"].number_format = "0.0000"
 
     # 6. جدول Level 1
     l1_title_row = spiked_row + 2
@@ -262,10 +268,11 @@ def generate_validation_excel(
             else 0.0
         )
         ws[f"B{r}"] = sample_conc
+        ws[f"B{r}"].number_format = "0.0000"
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # 7. الإحصائيات (تم استخدام =STDEV القياسية لتجنب خطأ #NAME?)
+    # 7. الإحصائيات
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
@@ -275,6 +282,9 @@ def generate_validation_excel(
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
+
+        ws[f"C{r}"].number_format = "0.0000"
+        ws[f"D{r}"].number_format = "0.0000"
 
         ws[f"E{r}"] = (
             f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
@@ -299,7 +309,7 @@ def generate_validation_excel(
         (
             "Standerd Deviation",
             f"=STDEV(B{start_sample_row}:B{end_sample_row})",
-        ),  # استخدام STDEV المباشرة
+        ),
         ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
         ("LOD", f"=B{tval_row}*B{sd_row}"),
         ("LOQ", f"=10*B{sd_row}"),
@@ -312,6 +322,7 @@ def generate_validation_excel(
         ws[f"A{i}"].font = font_bold
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
+        ws[f"B{i}"].number_format = "0.0000"
 
     # 8. جدول Measurement Uncertainty
     unc_header_row = l1_header_row
@@ -338,6 +349,7 @@ def generate_validation_excel(
     ws[f"H{purity_row}"].font = font_bold
     purity_val = std_purity / 100.0 if std_purity > 1.0 else std_purity
     ws[f"I{purity_row}"] = purity_val
+    ws[f"I{purity_row}"].number_format = "0.0000"
 
     uA_row = unc_start_row + 1
     uB_row = uA_row + 1
@@ -346,7 +358,6 @@ def generate_validation_excel(
     uComb_row = uD_row + 1
     uExp_row = uComb_row + 1
 
-    # تم تحديث صيغة uB لإضافة القيمة المطلقة ABS هنا:
     unc_labels = [
         (uA_row, "uA", f"=B{rsd_row}/100"),
         (uB_row, "uB", f"=ABS(0.5*(1 - (B{rec_row}/100)))/SQRT(3)"),
@@ -363,6 +374,7 @@ def generate_validation_excel(
     for r_num, u_name, u_formula in unc_labels:
         ws[f"H{r_num}"] = u_name
         ws[f"I{r_num}"] = u_formula
+        ws[f"I{r_num}"].number_format = "0.0000"
         if u_name in ["u combiend", "U expanded"]:
             ws[f"H{r_num}"].font = font_bold
             ws[f"I{r_num}"].font = font_bold
@@ -414,7 +426,7 @@ num_calib_levels = st.number_input(
 )
 
 calib_data = [
-    {"Level": f"STD {i+1}", "Concentration": 0.0, "Area": 0.0}
+    {"Level": f"STD {i+1}", "Concentration": 0.0000, "Area": 0.0000}
     for i in range(int(num_calib_levels))
 ]
 
@@ -445,20 +457,22 @@ st.subheader("📋 جدول العينات والمدخلات (Level 1)")
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
     target_conc = st.number_input(
-        "مستوى الإضافة (Spiked Level)", value=10.0, min_value=0.0
+        "مستوى الإضافة (Spiked Level)", value=10.0000, min_value=0.0, format="%.4f"
     )
 with col_input2:
     t_val = st.number_input(
         "قيمة t-statistic",
-        value=2.571,
+        value=2.5710,
+        format="%.4f",
         help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
     )
 with col_input3:
     std_purity = st.number_input(
         "نقاوة المحلول القياسي (Standard Purity)",
-        value=0.99,
+        value=0.9900,
         min_value=0.0,
         max_value=100.0,
+        format="%.4f",
     )
 
 num_samples = st.number_input(
@@ -471,7 +485,7 @@ num_samples = st.number_input(
 )
 
 sample_data = [
-    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0}
+    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000}
     for i in range(int(num_samples))
 ]
 
