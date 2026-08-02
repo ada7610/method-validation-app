@@ -2,6 +2,8 @@ import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.chart.axis import ChartLines
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import streamlit as st
@@ -31,7 +33,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (ديناميكية 100% لمنع التداخل)
+# 📊 دالة إنشاء ملف Excel المنسق
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -41,15 +43,14 @@ def generate_validation_excel(
     ws.title = "Validation Report"
     ws.views.sheetView[0].showGridLines = True
 
-    # الألوان والتنسيقات الأصلية
+    # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
     COLOR_BLUE_HEADER = "8EA9DB"
     COLOR_ORANGE_HEADER = "F4B084"
     COLOR_GRAY_NOTE = "D9D9D9"
 
-    # 🎨 ألوان تمييز جدول الكريتكال فاليو أوف جي (جديدة)
-    COLOR_PURPLE_HEADER = "7030A0"  # بنفسجي ملكي مميز
-    COLOR_PURPLE_SUB = "D9E1F2"  # بنفسجي/أزرق فاتح هادئ
+    COLOR_PURPLE_HEADER = "7030A0"  # بنفسجي ملكي مميز لجدول الكريتكال فاليو
+    COLOR_PURPLE_SUB = "D9E1F2"  # أزرق/بنفسجي فاتح
 
     font_main_title = Font(name="Calibri", size=14, bold=True)
     font_bold = Font(name="Calibri", size=11, bold=True)
@@ -80,7 +81,7 @@ def generate_validation_excel(
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    # 2. جدول Calibration STD (يبدأ من الصف 4)
+    # 2. جدول Calibration STD
     ws.merge_cells("A4:C4")
     ws["A4"] = "Calibration STD"
     ws["A4"].font = font_bold
@@ -97,7 +98,6 @@ def generate_validation_excel(
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"{col}5"].alignment = align_center
 
-    # كتابة قيم المعايرة
     start_cal_row = 6
     for idx, row in calib_df.iterrows():
         r = idx + start_cal_row
@@ -113,7 +113,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. 🌟 تمييز جدول Critical Values of G (Table A.5) بألوان خاصة متميزة
+    # 3. جدول Critical Values of G (P=0.05) مميز بالألوان البنفسجية
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -148,16 +148,19 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. الرسم البياني للمعايرة (Scatter Chart) مع تفتيح خطوط الطول والعرض
+    # 4. الرسم البياني الاصلي (Scatter Chart) مع ضبط لون الشبكة بأسلوب آمن
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
     chart.style = 13
 
-    # 🎨 تعديل لون خطوط الطول والعرض لتصبح ناعمة مثل لون خلايا الأكسل (D9D9D9)
+    # ✅ إعداد خطوط الشبكة برمادي خفيف مطابق لخطوط خلايا الأكسل
+    gridline_prop = GraphicalProperties(line=LineProperties(solidFill="D9D9D9"))
+
     chart.x_axis.majorGridlines = ChartLines()
-    chart.x_axis.majorGridlines.spPr.line.solidFill = "D9D9D9"
+    chart.x_axis.majorGridlines.spPr = gridline_prop
+
     chart.y_axis.majorGridlines = ChartLines()
-    chart.y_axis.majorGridlines.spPr.line.solidFill = "D9D9D9"
+    chart.y_axis.majorGridlines.spPr = gridline_prop
 
     xvalues = Reference(
         ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
@@ -244,7 +247,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # 7. الإحصائيات (الحسبة الأصلية لـ Z-score مع المقارنة بجدول G Critical)
+    # 7. الإحصائيات (الحسبة الأصلية)
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
