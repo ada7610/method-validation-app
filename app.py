@@ -2,6 +2,8 @@ import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.chart.axis import ChartLines
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import streamlit as st
@@ -145,16 +147,16 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. 📈 تصميم الرسم البياني المنسق تماماً كالصورة
+    # 4. 📈 تصميم الرسم البياني المطابق للصورة تماماً
     chart = ScatterChart()
-    chart.title = str(test_title) if test_title else "Calibration Curve"
-    chart.style = 13  # النمط الأزرق القياسي لإكسل
+    chart.title = str(test_title) if test_title else "B1"
+    chart.style = 13  # النمط الأزرق القياسي
 
     # إظهار خطوط الشبكة الرأسية والأفقية
     chart.x_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines = ChartLines()
 
-    # تنسيق الأرقام على المحاور بمرتبتين عشريتين (0.00) نفس الصورة
+    # تنسيق الأرقام بمرتبتين عشريتين (0.00) مطابق للصورة
     chart.x_axis.number_format = "0.00"
     chart.y_axis.number_format = "0.00"
 
@@ -166,18 +168,30 @@ def generate_validation_excel(
     )
 
     series = Series(yvalues, xvalues, title_from_data=False)
-    series.marker.symbol = "circle"  # نقاط دائرية
+    series.marker.symbol = "circle"  # نقاط دوائر زرقاء
+    series.marker.size = 6
     series.graphicalProperties.line.noFill = (
-        True  # عدم وصل النقاط بخط صلب مستقيم
+        True  # إخفاء الخط الصلب بين النقاط
     )
 
-    # إضافة خط الاتجاه المتقطع مع المعادلة و R²
-    series.trendline = openpyxl.chart.trendline.Trendline(
+    # إنشاء خط الاتجاه المتقطع (Dotted Line)
+    trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
 
+    # تطبيق نمط الخط المتقطع النقطي
+    try:
+        trendline.graphicalProperties = GraphicalProperties()
+        trendline.graphicalProperties.line = LineProperties(
+            prstDash="sysDot", cmpd="sng"
+        )
+    except Exception:
+        pass
+
+    series.trendline = trendline
+
     chart.series.append(series)
-    chart.legend = None  # إلغاء مفتاح الرسم ليتطابق مع الصورة
+    chart.legend = None  # بدون مفتاح رسم مطابق للصورة
     chart.width = 13
     chart.height = 7.5
     ws.add_chart(chart, "F3")
