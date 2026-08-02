@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 # ==========================================
-# 🎨 إعدادات الصفحة والشريط الجانبي (الحقوق في البرنامج)
+# 🎨 إعدادات الصفحة والشريط الجانبي (الحقوق)
 # ==========================================
 st.set_page_config(
     page_title="Method Validation System | Abdulrahman Alamri",
@@ -15,7 +15,6 @@ st.set_page_config(
     layout="wide",
 )
 
-# 👈 الحقوق في الشريط الجانبي (Sidebar)
 with st.sidebar:
     st.header("👑 Developer Info")
     st.markdown("""
@@ -47,8 +46,8 @@ def generate_validation_excel(
     COLOR_ORANGE_HEADER = "F4B084"
     COLOR_GRAY_NOTE = "D9D9D9"
 
-    COLOR_PURPLE_HEADER = "7030A0"  # بنفسجي ملكي مميز لجدول الكريتكال فاليو
-    COLOR_PURPLE_SUB = "D9E1F2"  # أزرق/بنفسجي فاتح
+    COLOR_PURPLE_HEADER = "7030A0"
+    COLOR_PURPLE_SUB = "D9E1F2"
 
     font_main_title = Font(name="Calibri", size=14, bold=True)
     font_bold = Font(name="Calibri", size=11, bold=True)
@@ -146,14 +145,18 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. الرسم البياني الأصلي (Scatter Chart) - آمن وبدون أخطاء
+    # 4. 📈 تصميم الرسم البياني المنسق تماماً كالصورة
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "Calibration Curve"
-    chart.style = 13
+    chart.style = 13  # النمط الأزرق القياسي لإكسل
 
-    # إظهار خطوط الشبكة الرئيسية بشكل آمن للماك والويندوز
+    # إظهار خطوط الشبكة الرأسية والأفقية
     chart.x_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines = ChartLines()
+
+    # تنسيق الأرقام على المحاور بمرتبتين عشريتين (0.00) نفس الصورة
+    chart.x_axis.number_format = "0.00"
+    chart.y_axis.number_format = "0.00"
 
     xvalues = Reference(
         ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
@@ -163,15 +166,20 @@ def generate_validation_excel(
     )
 
     series = Series(yvalues, xvalues, title_from_data=False)
-    series.marker.symbol = "circle"
-    series.graphicalProperties.line.noFill = True
+    series.marker.symbol = "circle"  # نقاط دائرية
+    series.graphicalProperties.line.noFill = (
+        True  # عدم وصل النقاط بخط صلب مستقيم
+    )
+
+    # إضافة خط الاتجاه المتقطع مع المعادلة و R²
     series.trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
 
     chart.series.append(series)
-    chart.width = 12
-    chart.height = 7
+    chart.legend = None  # إلغاء مفتاح الرسم ليتطابق مع الصورة
+    chart.width = 13
+    chart.height = 7.5
     ws.add_chart(chart, "F3")
 
     # 5. موقع خانات RSQ و t-value و Spiked Level
@@ -240,7 +248,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # 7. الإحصائيات (الحسبة الأصلية)
+    # 7. الإحصائيات
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
@@ -251,13 +259,11 @@ def generate_validation_excel(
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
 
-        # ربط الـ Outlier Status بجدول Critical values of G
         ws[f"E{r}"] = (
             f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
         )
         ws[f"E{r}"].alignment = align_center
 
-    # الملاحظة الرمادية الجانبية
     ws.merge_cells(f"F{start_sample_row}:F{end_sample_row}")
     ws[f"F{start_sample_row}"] = (
         "Any value higher than the critical value in the table is consider outlier"
@@ -371,22 +377,20 @@ st.title("🧪 نظام التحقق من كفاءة الطرق التحليلي
 
 col_header1, col_header2 = st.columns(2)
 with col_header1:
-    test_name = st.text_input("اسم الاختبار / التحليل", "")
+    test_name = st.text_input("اسم الاختبار / التحليل (مثلاً B1)", "B1")
 with col_header2:
-    conc_unit = st.text_input("وحدة التركيز", "")
+    conc_unit = st.text_input("وحدة التركيز", "ppm")
 
 st.divider()
 
-# ------------------------------------------
-# 1. جدول المعايرة القياسي (Calibration STD)
-# ------------------------------------------
+# 1. جدول المعايرة القياسي
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 
 num_calib_levels = st.number_input(
-    "عدد مستويات المعايرة (Calibration Levels)",
+    "عدد مستويات المعايرة",
     min_value=1,
     max_value=30,
-    value=6,
+    value=5,
     step=1,
     key="calib_num_input",
 )
@@ -417,20 +421,18 @@ if "Area" in valid_std.columns:
 
 st.divider()
 
-# ------------------------------------------
-# 2. جدول العينات والمدخلات (Level 1)
-# ------------------------------------------
+# 2. جدول العينات
 st.subheader("📋 جدول العينات والمدخلات (Level 1)")
 
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
     target_conc = st.number_input(
-        "مستوى الإضافة (Spiked Level)", value=0.0, min_value=0.0
+        "مستوى الإضافة (Spiked Level)", value=10.0, min_value=0.0
     )
 with col_input2:
     t_val = st.number_input(
-        "قيمة t-statistic (لحسبة LOD)",
-        value=0.0,
+        "قيمة t-statistic",
+        value=2.571,
         help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
     )
 with col_input3:
@@ -439,11 +441,10 @@ with col_input3:
         value=0.99,
         min_value=0.0,
         max_value=100.0,
-        help="أدخل النسبة ككسر عشري (مثلاً 0.99) أو نسبة مئوية (مثلاً 99)",
     )
 
 num_samples = st.number_input(
-    "عدد التكراريات / العينات (Number of Replicates)",
+    "عدد التكراريات / العينات",
     min_value=1,
     max_value=30,
     value=6,
@@ -472,9 +473,7 @@ if "Concentration" in edited_samples.columns:
         .fillna(0.0)
     )
 
-# ==========================================
-# 📥 قسم تصدير التقرير النهائي إلى Excel
-# ==========================================
+# تصدير الملف
 st.divider()
 
 try:
@@ -495,7 +494,7 @@ try:
     )
 
     st.download_button(
-        label="📥 تحميل تقرير Validation Excel المنسق (مع دوال تفاعلية)",
+        label="📥 تحميل تقرير Validation Excel المنسق (مع الرسم البياني المطابق)",
         data=excel_file,
         file_name="Method_Validation_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -504,9 +503,6 @@ try:
 except Exception as e:
     st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
 
-# ------------------------------------------
-# 🔻 الحقوق في الفوتر (أسفل برنامج Streamlit)
-# ------------------------------------------
 st.caption("---")
 st.caption(
     "Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026"
