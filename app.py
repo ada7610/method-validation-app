@@ -42,7 +42,6 @@ def generate_validation_excel(
     ws.title = "Validation Report"
     ws.views.sheetView[0].showGridLines = True
 
-    # الألوان والتنسيقات
     COLOR_GREEN_HEADER = "C6EFCE"
     COLOR_BLUE_HEADER = "8EA9DB"
     COLOR_ORANGE_HEADER = "F4B084"
@@ -68,7 +67,7 @@ def generate_validation_excel(
         bottom=thin_border_side,
     )
 
-    # 1. العنوان الرئيسي العلوي
+    # 1. العنوان الرئيسي
     title_text = (
         f"Calculation of Validation for {test_title}"
         if test_title
@@ -80,7 +79,7 @@ def generate_validation_excel(
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    # 2. جدول Calibration STD
+    # 2. جدول المعايرة
     ws.merge_cells("A4:C4")
     ws["A4"] = "Calibration STD"
     ws["A4"].font = font_bold
@@ -112,7 +111,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول Critical Values of G (P=0.05)
+    # 3. جدول القيم الحرجة لـ Grubbs
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -147,7 +146,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. 📈 تصميم المنحنى القياسي (رمادي فاتح للمحاور + 4 خانات عشرية + معادلة Y و R2)
+    # 4. المنحنى القياسي
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "B1"
     chart.title.overlay = False
@@ -161,14 +160,12 @@ def generate_validation_excel(
     chart.x_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines = ChartLines()
 
-    # محاور رمادية فاتحة
     chart.x_axis.graphicalProperties = GraphicalProperties()
     chart.x_axis.graphicalProperties.line = LineProperties(solidFill="BFBFBF")
 
     chart.y_axis.graphicalProperties = GraphicalProperties()
     chart.y_axis.graphicalProperties.line = LineProperties(solidFill="BFBFBF")
 
-    # 4 خانات عشرية للأرقام
     chart.x_axis.number_format = "0.0000"
     chart.y_axis.number_format = "0.0000"
 
@@ -184,11 +181,9 @@ def generate_validation_excel(
     series.marker.size = 6
     series.graphicalProperties.line.noFill = True
 
-    # المعادلة و R2
     trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
-
     try:
         trendline.graphicalProperties = GraphicalProperties()
         trendline.graphicalProperties.line = LineProperties(
@@ -198,14 +193,13 @@ def generate_validation_excel(
         pass
 
     series.trendline = trendline
-
     chart.series.append(series)
     chart.legend = None
     chart.width = 13
     chart.height = 7.5
     ws.add_chart(chart, "F3")
 
-    # 5. موقع خانات RSQ و t-value و Spiked Level
+    # 5. RSQ و t-value و Spiked Level
     rsq_row = end_cal_row + 2
     tval_row = rsq_row + 1
     spiked_row = tval_row + 1
@@ -230,7 +224,7 @@ def generate_validation_excel(
         ws[f"B{r}"].fill = PatternFill(fill_type=None)
         ws[f"B{r}"].alignment = align_center
 
-    # 6. جدول Level 1 (العينات)
+    # 6. جدول Level 1
     l1_title_row = spiked_row + 2
     l1_header_row = l1_title_row + 1
     start_sample_row = l1_header_row + 1
@@ -271,7 +265,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # 7. الإحصائيات
+    # 7. الإحصائيات (تم استخدام =STDEV القياسية لتجنب خطأ #NAME?)
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
@@ -304,8 +298,8 @@ def generate_validation_excel(
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
         (
             "Standerd Deviation",
-            f"=STDEV.S(B{start_sample_row}:B{end_sample_row})",
-        ),
+            f"=STDEV(B{start_sample_row}:B{end_sample_row})",
+        ),  # استخدام STDEV المباشرة
         ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
         ("LOD", f"=B{tval_row}*B{sd_row}"),
         ("LOQ", f"=10*B{sd_row}"),
@@ -406,7 +400,7 @@ with col_header2:
 
 st.divider()
 
-# 1. جدول المعايرة القياسي
+# 1. جدول المعايرة
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 
 num_calib_levels = st.number_input(
