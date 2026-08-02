@@ -130,15 +130,13 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (مع عناوين المحاور وتنسيق الأرقام والخطوط الفاتحة)
+    # 4. المخطط البياني في الإكسل (مطابق للصورة تماماً)
     chart = ScatterChart()
-    chart.title = None  
+    chart.title = test_name if test_name else "Calibration Curve"
 
-    # تعيين عناوين المحاور
     chart.x_axis.title = unit_header
     chart.y_axis.title = "Area"
 
-    # ضمان ظهور أرقام المحاور بجانب الخطوط مباشرة
     chart.x_axis.tickLblPos = "nextTo"
     chart.y_axis.tickLblPos = "nextTo"
 
@@ -151,12 +149,10 @@ def generate_validation_excel(
     chart.plot_area.graphicalProperties = GraphicalProperties()
     chart.plot_area.graphicalProperties.noFill = True
 
-    # خطوط الشبكة للمحور X
     chart.x_axis.majorGridlines = ChartLines()
     chart.x_axis.majorGridlines.graphicalProperties = GraphicalProperties()
     chart.x_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
 
-    # خطوط الشبكة للمحور Y
     chart.y_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines.graphicalProperties = GraphicalProperties()
     chart.y_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
@@ -167,7 +163,6 @@ def generate_validation_excel(
     series = Series(yvalues, xvalues, title_from_data=False)
     series.marker.symbol = "circle"
     series.marker.size = 6
-    
     series.graphicalProperties.line.noFill = True
 
     series.dataLabels = DataLabelList()
