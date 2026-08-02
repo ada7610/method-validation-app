@@ -6,6 +6,8 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 import streamlit as st
 
 # ==========================================
@@ -29,6 +31,68 @@ with st.sidebar:
     ---
     *All Rights Reserved © 2026*
     """)
+
+
+# ==========================================
+# 📊 دالة رسم المنحنى للشاشة (Matplotlib / Excel Style)
+# ==========================================
+def generate_excel_style_chart_fig(calib_df, title_str="B1"):
+    """توليد رسم بياني مطابق للشكل المطلوبة لعرضه في Streamlit"""
+    fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
+
+    if not calib_df.empty and len(calib_df) > 0:
+        x = calib_df["Concentration"].values.astype(float)
+        y = calib_df["Area"].values.astype(float)
+
+        if len(x) > 1 and np.sum(x) > 0:
+            slope, intercept = np.polyfit(x, y, 1)
+            y_pred = slope * x + intercept
+            ss_res = np.sum((y - y_pred) ** 2)
+            ss_tot = np.sum((y - np.mean(y)) ** 2)
+            r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0.0
+        else:
+            slope, intercept, r_squared = 0.0, 0.0, 0.0
+
+        # شبكة إكسل رمادية خفيفة
+        ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75, zorder=1)
+
+        # نقاط البيانات
+        ax.scatter(x, y, color='#4A90E2', s=45, zorder=3, edgecolors='#4A90E2')
+
+        # خط الاتجاه المنقط
+        x_max_val = max(x) * 1.25 if max(x) > 0 else 25.0
+        x_line = np.linspace(0, x_max_val, 100)
+        y_line = slope * x_line + intercept
+        ax.plot(x_line, y_line, color='#4A90E2', linestyle=':', linewidth=1.5, zorder=2)
+
+        # كتابة المعادلة وقيمة R²
+        sign = "+" if intercept >= 0 else "-"
+        equation_text = f"y = {slope:.4f}x {sign} {abs(intercept):.4f}\nR² = {r_squared:.4f}"
+        ax.text(0.68, 0.88, equation_text, transform=ax.transAxes,
+                fontsize=10, color='#333333', verticalalignment='top',
+                fontfamily='sans-serif')
+
+        y_max_val = max(y) * 1.10 if max(y) > 0 else 90.0
+        ax.set_xlim(0, x_max_val)
+        ax.set_ylim(0, y_max_val)
+    else:
+        ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75)
+        ax.set_xlim(0, 25.0)
+        ax.set_ylim(0, 90.0)
+
+    ax.yaxis.set_major_formatter('{x:.2f}')
+    ax.xaxis.set_major_formatter('{x:.2f}')
+
+    for spine in ax.spines.values():
+        spine.set_color('#BFBFBF')
+        spine.set_linewidth(1.0)
+
+    ax.tick_params(colors='#333333', labelsize=9.5)
+    ax.set_title(title_str if title_str else "B1", fontsize=13, fontweight='bold', pad=15, color='#262626')
+    plt.tight_layout()
+    return fig
 
 
 # ==========================================
@@ -149,7 +213,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المنحنى القياسي (تم جعل X = Area و Y = Concentration)
+    # 4. المنحنى القياسي (X = Concentration و Y = Area مطابقة للصورة)
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "B1"
     chart.title.overlay = False
@@ -172,13 +236,13 @@ def generate_validation_excel(
     chart.x_axis.number_format = "0.0000"
     chart.y_axis.number_format = "0.0000"
 
-    # المحور X أصبح المساحة Area (العامود C / Column 3)
+    # المحور X: Concentration (العامود B / Column 2)
     xvalues = Reference(
-        ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row
-    )
-    # المحور Y أصبح التركيز Concentration (العامود B / Column 2)
-    yvalues = Reference(
         ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
+    )
+    # المحور Y: Area (العامود C / Column 3)
+    yvalues = Reference(
+        ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row
     )
 
     series = Series(yvalues, xvalues, title_from_data=False)
@@ -425,8 +489,15 @@ num_calib_levels = st.number_input(
     key="calib_num_input",
 )
 
+default_concs = [2.5, 5.0, 10.0, 15.0, 20.0]
+default_areas = [11.8, 20.9, 38.6, 62.1, 84.5]
+
 calib_data = [
-    {"Level": f"STD {i+1}", "Concentration": 0.0000, "Area": 0.0000}
+    {
+        "Level": f"STD {i+1}",
+        "Concentration": default_concs[i] if i < len(default_concs) else 0.0000,
+        "Area": default_areas[i] if i < len(default_areas) else 0.0000
+    }
     for i in range(int(num_calib_levels))
 ]
 
@@ -448,6 +519,11 @@ if "Area" in valid_std.columns:
     valid_std["Area"] = (
         pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
     )
+
+# 📈 عرض المنحنى البياني داخل التطبيق بنفس التنسيق المباشر
+st.write("### 📈 منحنى المعايرة (Calibration Curve)")
+fig_chart = generate_excel_style_chart_fig(valid_std, title_str=test_name)
+st.pyplot(fig_chart)
 
 st.divider()
 
