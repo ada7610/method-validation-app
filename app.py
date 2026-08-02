@@ -130,7 +130,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل
+    # 4. المخطط البياني في الإكسل (بخطوط رمادي فاتح بالكامل وتنسيق الأرقام 0.00)
     chart = ScatterChart()
     chart.title = None  
 
@@ -141,10 +141,15 @@ def generate_validation_excel(
     chart.plot_area.graphicalProperties.noFill = True
 
     chart.x_axis.majorGridlines = ChartLines()
+    chart.x_axis.majorGridlines.graphicalProperties.line = LineProperties(prstDash="solid")
+    chart.x_axis.majorGridlines.graphicalProperties.line.solidFill = "D9D9D9"
+    
     chart.y_axis.majorGridlines = ChartLines()
+    chart.y_axis.majorGridlines.graphicalProperties.line = LineProperties(prstDash="solid")
+    chart.y_axis.majorGridlines.graphicalProperties.line.solidFill = "D9D9D9"
 
-    chart.x_axis.number_format = "0.0000"
-    chart.y_axis.number_format = "0.0000"
+    chart.x_axis.number_format = "0.00"
+    chart.y_axis.number_format = "0.00"
 
     xvalues = Reference(ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row)
     yvalues = Reference(ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row)
