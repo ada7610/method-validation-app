@@ -2,6 +2,7 @@ import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.chart.axis import ChartLines
+from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -34,10 +35,9 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة رسم المنحنى للشاشة (Matplotlib / Excel Style)
+# 📊 دالة رسم المنحنى للشاشة (Matplotlib)
 # ==========================================
 def generate_excel_style_chart_fig(calib_df, title_str="B1"):
-    """توليد رسم بياني مطابق للشكل المطلوبة لعرضه في Streamlit"""
     fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
     fig.patch.set_facecolor('white')
     ax.set_facecolor('white')
@@ -55,19 +55,19 @@ def generate_excel_style_chart_fig(calib_df, title_str="B1"):
         else:
             slope, intercept, r_squared = 0.0, 0.0, 0.0
 
-        # شبكة إكسل رمادية خفيفة
         ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75, zorder=1)
-
-        # نقاط البيانات
+        ax.plot(x, y, color='#4A90E2', linestyle='-', linewidth=1.2, zorder=2)
         ax.scatter(x, y, color='#4A90E2', s=45, zorder=3, edgecolors='#4A90E2')
 
-        # خط الاتجاه المنقط
+        # إظهار القيم (x, y) فوق النقاط للشاشة
+        for xi, yi in zip(x, y):
+            ax.annotate(f"({xi:.2f}, {yi:.2f})", (xi, yi), textcoords="offset points", xytext=(0, 7), ha='center', fontsize=8, color='#333333')
+
         x_max_val = max(x) * 1.25 if max(x) > 0 else 25.0
         x_line = np.linspace(0, x_max_val, 100)
         y_line = slope * x_line + intercept
         ax.plot(x_line, y_line, color='#4A90E2', linestyle=':', linewidth=1.5, zorder=2)
 
-        # كتابة المعادلة وقيمة R²
         sign = "+" if intercept >= 0 else "-"
         equation_text = f"y = {slope:.4f}x {sign} {abs(intercept):.4f}\nR² = {r_squared:.4f}"
         ax.text(0.68, 0.88, equation_text, transform=ax.transAxes,
@@ -96,7 +96,7 @@ def generate_excel_style_chart_fig(calib_df, title_str="B1"):
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المنسق (4 أرقام عشرية)
+# 📊 دالة إنشاء ملف Excel المصدر مع إظهار قيم X و Y
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -118,25 +118,17 @@ def generate_validation_excel(
     font_bold = Font(name="Calibri", size=11, bold=True)
     font_white_bold = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     font_regular = Font(name="Calibri", size=10)
-    align_center = Alignment(
-        horizontal="center", vertical="center", wrap_text=False
-    )
+    align_center = Alignment(horizontal="center", vertical="center", wrap_text=False)
     align_left = Alignment(horizontal="left", vertical="center")
 
     thin_border_side = Side(border_style="thin", color="D9D9D9")
     thin_border = Border(
-        left=thin_border_side,
-        right=thin_border_side,
-        top=thin_border_side,
-        bottom=thin_border_side,
+        left=thin_border_side, right=thin_border_side,
+        top=thin_border_side, bottom=thin_border_side
     )
 
     # 1. العنوان الرئيسي
-    title_text = (
-        f"Calculation of Validation for {test_title}"
-        if test_title
-        else "Calculation of Validation"
-    )
+    title_text = f"Calculation of Validation for {test_title}" if test_title else "Calculation of Validation"
     ws.merge_cells("A1:K1")
     ws["A1"] = title_text
     ws["A1"].font = font_main_title
@@ -164,14 +156,8 @@ def generate_validation_excel(
     for idx, row in calib_df.iterrows():
         r = idx + start_cal_row
         ws[f"A{r}"] = str(row.get("Level", ""))
-        ws[f"B{r}"] = (
-            float(row.get("Concentration", 0))
-            if pd.notnull(row.get("Concentration"))
-            else 0.0
-        )
-        ws[f"C{r}"] = (
-            float(row.get("Area", 0)) if pd.notnull(row.get("Area")) else 0.0
-        )
+        ws[f"B{r}"] = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
+        ws[f"C{r}"] = float(row.get("Area", 0)) if pd.notnull(row.get("Area")) else 0.0
         ws[f"B{r}"].number_format = "0.0000"
         ws[f"C{r}"].number_format = "0.0000"
 
@@ -193,14 +179,8 @@ def generate_validation_excel(
         ws[col_ref].border = thin_border
 
     grubbs_table = [
-        (3, 1.155),
-        (4, 1.481),
-        (5, 1.715),
-        (6, 1.887),
-        (7, 2.020),
-        (8, 2.126),
-        (9, 2.215),
-        (10, 2.290),
+        (3, 1.155), (4, 1.481), (5, 1.715), (6, 1.887),
+        (7, 2.020), (8, 2.126), (9, 2.215), (10, 2.290)
     ]
 
     for row_idx, (n_val, g_crit) in enumerate(grubbs_table, 6):
@@ -208,12 +188,11 @@ def generate_validation_excel(
         ws[f"K{row_idx}"] = g_crit
         ws[f"J{row_idx}"].alignment = align_center
         ws[f"K{row_idx}"].number_format = "0.0000"
-
         for c in ["J", "K"]:
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المنحنى القياسي (X = Concentration و Y = Area مطابقة للصورة)
+    # 4. المخطط البياني في الإكسل (مع إضافة قيم X و Y للعينات)
     chart = ScatterChart()
     chart.title = str(test_title) if test_title else "B1"
     chart.title.overlay = False
@@ -236,28 +215,28 @@ def generate_validation_excel(
     chart.x_axis.number_format = "0.0000"
     chart.y_axis.number_format = "0.0000"
 
-    # المحور X: Concentration (العامود B / Column 2)
-    xvalues = Reference(
-        ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row
-    )
-    # المحور Y: Area (العامود C / Column 3)
-    yvalues = Reference(
-        ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row
-    )
+    xvalues = Reference(ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row)
+    yvalues = Reference(ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row)
 
     series = Series(yvalues, xvalues, title_from_data=False)
     series.marker.symbol = "circle"
     series.marker.size = 6
-    series.graphicalProperties.line.noFill = True
+    
+    series.graphicalProperties.line.solidFill = "4A90E2"
+    series.graphicalProperties.line.width = 12700
+
+    # 🌟 تفعيل إظهار قيم X و Y فوق كل نقطة في الإكسل
+    series.dataLabels = DataLabelList()
+    series.dataLabels.showVal = True      # إظهار قيمة Y (الـ Area)
+    series.dataLabels.showCatName = False
+    series.dataLabels.showSerName = False
 
     trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
     try:
         trendline.graphicalProperties = GraphicalProperties()
-        trendline.graphicalProperties.line = LineProperties(
-            prstDash="sysDot", cmpd="sng"
-        )
+        trendline.graphicalProperties.line = LineProperties(prstDash="sysDot", cmpd="sng")
     except Exception:
         pass
 
@@ -274,9 +253,7 @@ def generate_validation_excel(
     spiked_row = tval_row + 1
 
     ws[f"A{rsq_row}"] = "RSQ"
-    ws[f"B{rsq_row}"] = (
-        f"=RSQ(C{start_cal_row}:C{end_cal_row}, B{start_cal_row}:B{end_cal_row})"
-    )
+    ws[f"B{rsq_row}"] = f"=RSQ(C{start_cal_row}:C{end_cal_row}, B{start_cal_row}:B{end_cal_row})"
 
     ws[f"A{tval_row}"] = "t-value (t test)"
     ws[f"B{tval_row}"] = float(t_val)
@@ -302,35 +279,21 @@ def generate_validation_excel(
     ws.merge_cells(f"A{l1_title_row}:E{l1_title_row}")
     ws[f"A{l1_title_row}"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
     ws[f"A{l1_title_row}"].font = font_bold
-    ws[f"A{l1_title_row}"].fill = PatternFill(
-        "solid", fgColor=COLOR_BLUE_HEADER
-    )
+    ws[f"A{l1_title_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws[f"A{l1_title_row}"].alignment = align_center
 
-    headers_l1 = [
-        "Samples name",
-        unit_header,
-        "Recovery %",
-        "Outlier (Z-Score)",
-        "Outlier Status",
-    ]
+    headers_l1 = ["Samples name", unit_header, "Recovery %", "Outlier (Z-Score)", "Outlier Status"]
     cols_l1 = ["A", "B", "C", "D", "E"]
     for c, h in zip(cols_l1, headers_l1):
         ws[f"{c}{l1_header_row}"] = h
         ws[f"{c}{l1_header_row}"].font = font_bold
-        ws[f"{c}{l1_header_row}"].fill = PatternFill(
-            "solid", fgColor=COLOR_ORANGE_HEADER
-        )
+        ws[f"{c}{l1_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"{c}{l1_header_row}"].alignment = align_center
 
     for idx, row in level1_df.iterrows():
         r = idx + start_sample_row
         ws[f"A{r}"] = str(row.get("Sample Name", ""))
-        sample_conc = (
-            float(row.get("Concentration", 0))
-            if pd.notnull(row.get("Concentration"))
-            else 0.0
-        )
+        sample_conc = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
         ws[f"B{r}"] = sample_conc
         ws[f"B{r}"].number_format = "0.0000"
 
@@ -346,42 +309,27 @@ def generate_validation_excel(
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
-
         ws[f"C{r}"].number_format = "0.0000"
         ws[f"D{r}"].number_format = "0.0000"
-
-        ws[f"E{r}"] = (
-            f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
-        )
+        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
         ws[f"E{r}"].alignment = align_center
 
     ws.merge_cells(f"F{start_sample_row}:F{end_sample_row}")
-    ws[f"F{start_sample_row}"] = (
-        "Any value higher than the critical value in the table is consider outlier"
-    )
+    ws[f"F{start_sample_row}"] = "Any value higher than the critical value in the table is consider outlier"
     ws[f"F{start_sample_row}"].font = Font(name="Calibri", size=9, bold=True)
-    ws[f"F{start_sample_row}"].fill = PatternFill(
-        "solid", fgColor=COLOR_GRAY_NOTE
-    )
-    ws[f"F{start_sample_row}"].alignment = Alignment(
-        horizontal="center", vertical="center", wrap_text=True
-    )
+    ws[f"F{start_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
+    ws[f"F{start_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
-        (
-            "Standerd Deviation",
-            f"=STDEV(B{start_sample_row}:B{end_sample_row})",
-        ),
+        ("Standerd Deviation", f"=STDEV(B{start_sample_row}:B{end_sample_row})"),
         ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
         ("LOD", f"=B{tval_row}*B{sd_row}"),
         ("LOQ", f"=10*B{sd_row}"),
     ]
 
-    for i, (label, formula) in enumerate(
-        stats_labels, start=stats_start_row
-    ):
+    for i, (label, formula) in enumerate(stats_labels, start=stats_start_row):
         ws[f"A{i}"] = label
         ws[f"A{i}"].font = font_bold
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
@@ -395,17 +343,13 @@ def generate_validation_excel(
     ws.merge_cells(f"H{unc_header_row}:I{unc_header_row}")
     ws[f"H{unc_header_row}"] = "Measurment uncertainty"
     ws[f"H{unc_header_row}"].font = font_bold
-    ws[f"H{unc_header_row}"].fill = PatternFill(
-        "solid", fgColor=COLOR_ORANGE_HEADER
-    )
+    ws[f"H{unc_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
     ws[f"H{unc_header_row}"].alignment = align_center
 
     ws.merge_cells(f"H{unc_start_row}:I{unc_start_row}")
     ws[f"H{unc_start_row}"] = "Level 1"
     ws[f"H{unc_start_row}"].font = font_bold
-    ws[f"H{unc_start_row}"].fill = PatternFill(
-        "solid", fgColor=COLOR_BLUE_HEADER
-    )
+    ws[f"H{unc_start_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws[f"H{unc_start_row}"].alignment = align_center
 
     purity_row = unc_header_row - 1
@@ -427,11 +371,7 @@ def generate_validation_excel(
         (uB_row, "uB", f"=ABS(0.5*(1 - (B{rec_row}/100)))/SQRT(3)"),
         (uC_row, "uC", f"=0.5*(1 - I{purity_row})/SQRT(3)"),
         (uD_row, "uD", f"=1 - SQRT(B{rsq_row})"),
-        (
-            uComb_row,
-            "u combiend",
-            f"=SQRT(I{uA_row}^2 + I{uB_row}^2 + I{uC_row}^2 + I{uD_row}^2)",
-        ),
+        (uComb_row, "u combiend", f"=SQRT(I{uA_row}^2 + I{uB_row}^2 + I{uC_row}^2 + I{uD_row}^2)"),
         (uExp_row, "U expanded", f"=2*I{uComb_row}"),
     ]
 
@@ -444,16 +384,8 @@ def generate_validation_excel(
             ws[f"I{r_num}"].font = font_bold
 
     column_widths = {
-        "A": 22,
-        "B": 24,
-        "C": 18,
-        "D": 18,
-        "E": 18,
-        "F": 25,
-        "H": 22,
-        "I": 18,
-        "J": 22,
-        "K": 18,
+        "A": 22, "B": 24, "C": 18, "D": 18, "E": 18,
+        "F": 25, "H": 22, "I": 18, "J": 22, "K": 18
     }
     for col_letter, width in column_widths.items():
         ws.column_dimensions[col_letter].width = width
@@ -477,16 +409,9 @@ with col_header2:
 
 st.divider()
 
-# 1. جدول المعايرة
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
-
 num_calib_levels = st.number_input(
-    "عدد مستويات المعايرة",
-    min_value=1,
-    max_value=30,
-    value=5,
-    step=1,
-    key="calib_num_input",
+    "عدد مستويات المعايرة", min_value=1, max_value=30, value=5, step=1, key="calib_num_input"
 )
 
 default_concs = [2.5, 5.0, 10.0, 15.0, 20.0]
@@ -502,86 +427,50 @@ calib_data = [
 ]
 
 valid_std_raw = st.data_editor(
-    pd.DataFrame(calib_data),
-    num_rows="dynamic",
-    key=f"calib_table_editor_{num_calib_levels}",
-    use_container_width=True,
+    pd.DataFrame(calib_data), num_rows="dynamic", key=f"calib_table_editor_{num_calib_levels}", use_container_width=True
 )
 
 valid_std = valid_std_raw.dropna(how="all").copy()
 if "Level" in valid_std.columns:
     valid_std["Level"] = valid_std["Level"].fillna("")
 if "Concentration" in valid_std.columns:
-    valid_std["Concentration"] = (
-        pd.to_numeric(valid_std["Concentration"], errors="coerce").fillna(0.0)
-    )
+    valid_std["Concentration"] = pd.to_numeric(valid_std["Concentration"], errors="coerce").fillna(0.0)
 if "Area" in valid_std.columns:
-    valid_std["Area"] = (
-        pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
-    )
+    valid_std["Area"] = pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
 
-# 📈 عرض المنحنى البياني داخل التطبيق بنفس التنسيق المباشر
-st.write("### 📈 منحنى المعايرة (Calibration Curve)")
+st.write("### 📈 معاينة المنحنى البياني")
 fig_chart = generate_excel_style_chart_fig(valid_std, title_str=test_name)
 st.pyplot(fig_chart)
 
 st.divider()
 
-# 2. جدول العينات
 st.subheader("📋 جدول العينات والمدخلات (Level 1)")
-
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
-    target_conc = st.number_input(
-        "مستوى الإضافة (Spiked Level)", value=10.0000, min_value=0.0, format="%.4f"
-    )
+    target_conc = st.number_input("مستوى الإضافة (Spiked Level)", value=10.0000, min_value=0.0, format="%.4f")
 with col_input2:
-    t_val = st.number_input(
-        "قيمة t-statistic",
-        value=2.5710,
-        format="%.4f",
-        help="مثال: القيمة 2.571 تتوافق مع n=6 و 95% confidence level",
-    )
+    t_val = st.number_input("قيمة t-statistic", value=2.5710, format="%.4f")
 with col_input3:
-    std_purity = st.number_input(
-        "نقاوة المحلول القياسي (Standard Purity)",
-        value=0.9900,
-        min_value=0.0,
-        max_value=100.0,
-        format="%.4f",
-    )
+    std_purity = st.number_input("نقاوة المحلول القياسي (Standard Purity)", value=0.9900, min_value=0.0, max_value=100.0, format="%.4f")
 
 num_samples = st.number_input(
-    "عدد التكراريات / العينات",
-    min_value=1,
-    max_value=30,
-    value=6,
-    step=1,
-    key="samples_num_input",
+    "عدد التكراريات / العينات", min_value=1, max_value=30, value=6, step=1, key="samples_num_input"
 )
 
 sample_data = [
-    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000}
-    for i in range(int(num_samples))
+    {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000} for i in range(int(num_samples))
 ]
 
 edited_samples_raw = st.data_editor(
-    pd.DataFrame(sample_data),
-    num_rows="dynamic",
-    key=f"samples_table_editor_{num_samples}",
-    use_container_width=True,
+    pd.DataFrame(sample_data), num_rows="dynamic", key=f"samples_table_editor_{num_samples}", use_container_width=True
 )
 
 edited_samples = edited_samples_raw.dropna(how="all").copy()
 if "Sample Name" in edited_samples.columns:
     edited_samples["Sample Name"] = edited_samples["Sample Name"].fillna("")
 if "Concentration" in edited_samples.columns:
-    edited_samples["Concentration"] = (
-        pd.to_numeric(edited_samples["Concentration"], errors="coerce")
-        .fillna(0.0)
-    )
+    edited_samples["Concentration"] = pd.to_numeric(edited_samples["Concentration"], errors="coerce").fillna(0.0)
 
-# تصدير الملف
 st.divider()
 
 try:
@@ -602,7 +491,7 @@ try:
     )
 
     st.download_button(
-        label="📥 تحميل تقرير Validation Excel المحدث",
+        label="📥 تحميل تقرير Validation Excel المصدر مع قيم X و Y",
         data=excel_file,
         file_name="Method_Validation_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -612,6 +501,4 @@ except Exception as e:
     st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
 
 st.caption("---")
-st.caption(
-    "Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026"
-)
+st.caption("Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026")
