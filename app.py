@@ -130,13 +130,13 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (مع إبعاد عناوين المحاور عن الأرقام لعدم التداخل)
+    # 4. المخطط البياني في الإكسل (فصل عناوين المحاور في أسطر منفصلة وبمسافة كافية عن الأرقام)
     chart = ScatterChart()
     chart.title = test_name if test_name else "Calibration Curve"
 
-    # إضافة مسافات وخطوط جديدة لإبعاد العناوين عن أرقام المحاور تماماً
-    chart.x_axis.title = f"\n\n{unit_header}"
-    chart.y_axis.title = f"{'Area'}\n\n"
+    # عزل العنوان في سطر منفصل بعيداً عن أرقام المحاور
+    chart.x_axis.title = f"\n\n\n{unit_header}"
+    chart.y_axis.title = f"{'Area'}\n\n\n"
 
     # تفعيل إظهار أرقام المحاور وضبط مواقعها بشكل قاطع
     chart.x_axis.delete = False
@@ -189,8 +189,8 @@ def generate_validation_excel(
     series.trendline = trendline
     chart.series.append(series)
     chart.legend = None
-    chart.width = 14
-    chart.height = 8
+    chart.width = 15
+    chart.height = 8.5
     ws.add_chart(chart, "F3")
 
     # 5. RSQ و t-value و Spiked Level
