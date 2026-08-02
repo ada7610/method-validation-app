@@ -56,7 +56,6 @@ def generate_excel_style_chart_fig(calib_df, title_str=""):
             slope, intercept, r_squared = 0.0, 0.0, 0.0
 
         ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75, zorder=1)
-        # تم إزالة الخط المتصل من الشاشة أيضاً ليطابق إكسل تماماً
         ax.scatter(x, y, color='#4A90E2', s=45, zorder=3, edgecolors='#4A90E2')
 
         x_max_val = max(x) * 1.25 if max(x) > 0 else 25.0
@@ -188,7 +187,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (إلغاء الخط المتصل تماماً + ترك النقاط وخط الاتجاه المقطع)
+    # 4. المخطط البياني في الإكسل
     chart = ScatterChart()
     chart.title = None  
     chart.title.overlay = False
@@ -212,16 +211,13 @@ def generate_validation_excel(
     series.marker.symbol = "circle"
     series.marker.size = 6
     
-    # 🚫 إخفاء الخط المتصل الذي يربط بين النقاط نهائياً
     series.graphicalProperties.line.noFill = True
 
-    # إظهار قيم Y و X على النقاط داخل المخطط
     series.dataLabels = DataLabelList()
     series.dataLabels.showVal = True
     series.dataLabels.showCatName = False
     series.dataLabels.showSerName = False
 
-    # خط الاتجاه المستقيم المقطع (sysDot) مع إظهار المعادلة و R²
     trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
