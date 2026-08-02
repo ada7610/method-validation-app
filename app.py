@@ -187,10 +187,9 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل
+    # 4. المخطط البياني في الإكسل (تم تصحيح معالجة العنوان لتجنب خطأ NoneType)
     chart = ScatterChart()
     chart.title = None  
-    chart.title.overlay = False
 
     chart.graphicalProperties = GraphicalProperties()
     chart.graphicalProperties.noFill = True
