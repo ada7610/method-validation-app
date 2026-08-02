@@ -37,7 +37,7 @@ with st.sidebar:
 # ==========================================
 # 📊 دالة رسم المنحنى للشاشة (Matplotlib)
 # ==========================================
-def generate_excel_style_chart_fig(calib_df, title_str="B1"):
+def generate_excel_style_chart_fig(calib_df, title_str=""):
     fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
     fig.patch.set_facecolor('white')
     ax.set_facecolor('white')
@@ -58,10 +58,6 @@ def generate_excel_style_chart_fig(calib_df, title_str="B1"):
         ax.grid(True, which='both', color='#D9D9D9', linestyle='-', linewidth=0.75, zorder=1)
         ax.plot(x, y, color='#4A90E2', linestyle='-', linewidth=1.2, zorder=2)
         ax.scatter(x, y, color='#4A90E2', s=45, zorder=3, edgecolors='#4A90E2')
-
-        # إظهار القيم (x, y) فوق النقاط للشاشة
-        for xi, yi in zip(x, y):
-            ax.annotate(f"({xi:.2f}, {yi:.2f})", (xi, yi), textcoords="offset points", xytext=(0, 7), ha='center', fontsize=8, color='#333333')
 
         x_max_val = max(x) * 1.25 if max(x) > 0 else 25.0
         x_line = np.linspace(0, x_max_val, 100)
@@ -90,13 +86,14 @@ def generate_excel_style_chart_fig(calib_df, title_str="B1"):
         spine.set_linewidth(1.0)
 
     ax.tick_params(colors='#333333', labelsize=9.5)
-    ax.set_title(title_str if title_str else "B1", fontsize=13, fontweight='bold', pad=15, color='#262626')
+    # العنوان يترك فارغاً بناءً على الطلب ليدخل يدوياً
+    ax.set_title(title_str if title_str else "", fontsize=13, fontweight='bold', pad=15, color='#262626')
     plt.tight_layout()
     return fig
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المصدر مع إظهار قيم X و Y
+# 📊 دالة إنشاء ملف Excel المصدر
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -192,9 +189,9 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (مع إضافة قيم X و Y للعينات)
+    # 4. المخطط البياني في الإكسل (عنوان فارغ + خطوط الخلايا الافتراضية + قيم X و Y + نقاط متصلة وخط اتجاه متقطع)
     chart = ScatterChart()
-    chart.title = str(test_title) if test_title else "B1"
+    chart.title = ""  # ترك العنوان فارغاً ليدخل يدوياً
     chart.title.overlay = False
 
     chart.graphicalProperties = GraphicalProperties()
@@ -203,14 +200,9 @@ def generate_validation_excel(
     chart.plot_area.graphicalProperties = GraphicalProperties()
     chart.plot_area.graphicalProperties.noFill = True
 
+    # الاعتماد على إعدادات أكسل لشبكة المحاور لتكون بـ لون خلايا أكسل
     chart.x_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines = ChartLines()
-
-    chart.x_axis.graphicalProperties = GraphicalProperties()
-    chart.x_axis.graphicalProperties.line = LineProperties(solidFill="BFBFBF")
-
-    chart.y_axis.graphicalProperties = GraphicalProperties()
-    chart.y_axis.graphicalProperties.line = LineProperties(solidFill="BFBFBF")
 
     chart.x_axis.number_format = "0.0000"
     chart.y_axis.number_format = "0.0000"
@@ -222,15 +214,17 @@ def generate_validation_excel(
     series.marker.symbol = "circle"
     series.marker.size = 6
     
+    # الخط الواصل بين النقاط
     series.graphicalProperties.line.solidFill = "4A90E2"
     series.graphicalProperties.line.width = 12700
 
-    # 🌟 تفعيل إظهار قيم X و Y فوق كل نقطة في الإكسل
+    # إظهار قيم Y و X على النقاط
     series.dataLabels = DataLabelList()
-    series.dataLabels.showVal = True      # إظهار قيمة Y (الـ Area)
+    series.dataLabels.showVal = True
     series.dataLabels.showCatName = False
     series.dataLabels.showSerName = False
 
+    # خط الاتجاه المستقيم المقطع (sysDot) مع المعادلة و R²
     trendline = openpyxl.chart.trendline.Trendline(
         trendlineType="linear", dispEq=True, dispRSqr=True
     )
@@ -439,7 +433,7 @@ if "Area" in valid_std.columns:
     valid_std["Area"] = pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
 
 st.write("### 📈 معاينة المنحنى البياني")
-fig_chart = generate_excel_style_chart_fig(valid_std, title_str=test_name)
+fig_chart = generate_excel_style_chart_fig(valid_std, title_str="")
 st.pyplot(fig_chart)
 
 st.divider()
@@ -491,7 +485,7 @@ try:
     )
 
     st.download_button(
-        label="📥 تحميل تقرير Validation Excel المصدر مع قيم X و Y",
+        label="📥 تحميل تقرير Validation Excel المصدر بالشكل المطلوب",
         data=excel_file,
         file_name="Method_Validation_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
