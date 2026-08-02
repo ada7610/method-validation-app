@@ -134,9 +134,16 @@ def generate_validation_excel(
     chart = ScatterChart()
     chart.title = None  
 
-    # تعيين عناوين المحاور (X: Concentration مع الوحدة، Y: Area)
+    # تعيين عناوين المحاور
     chart.x_axis.title = unit_header
     chart.y_axis.title = "Area"
+
+    # ضمان ظهور أرقام المحاور بجانب الخطوط مباشرة
+    chart.x_axis.tickLblPos = "nextTo"
+    chart.y_axis.tickLblPos = "nextTo"
+
+    chart.x_axis.number_format = "0.00"
+    chart.y_axis.number_format = "0.00"
 
     chart.graphicalProperties = GraphicalProperties()
     chart.graphicalProperties.noFill = True
@@ -153,9 +160,6 @@ def generate_validation_excel(
     chart.y_axis.majorGridlines = ChartLines()
     chart.y_axis.majorGridlines.graphicalProperties = GraphicalProperties()
     chart.y_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
-
-    chart.x_axis.number_format = "0.00"
-    chart.y_axis.number_format = "0.00"
 
     xvalues = Reference(ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row)
     yvalues = Reference(ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row)
