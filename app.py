@@ -130,9 +130,13 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (مع المعالجة الآمنة لخصائص الخطوط)
+    # 4. المخطط البياني في الإكسل (مع عناوين المحاور وتنسيق الأرقام والخطوط الفاتحة)
     chart = ScatterChart()
     chart.title = None  
+
+    # تعيين عناوين المحاور (X: Concentration مع الوحدة، Y: Area)
+    chart.x_axis.title = unit_header
+    chart.y_axis.title = "Area"
 
     chart.graphicalProperties = GraphicalProperties()
     chart.graphicalProperties.noFill = True
