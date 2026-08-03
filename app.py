@@ -11,7 +11,7 @@ import numpy as np
 import streamlit as st
 
 # ==========================================
-# 🎨 إعدادات الصفحة والشريط الجانبي (الحقوق)
+# 🎨 Page & Sidebar Configuration
 # ==========================================
 st.set_page_config(
     page_title="Method Validation System | Abdulrahman Alamri",
@@ -34,7 +34,7 @@ with st.sidebar:
 
 
 # ==========================================
-# 📊 دالة إنشاء ملف Excel المصدر
+# 📊 Excel Generation Function
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
@@ -65,7 +65,7 @@ def generate_validation_excel(
         top=thin_border_side, bottom=thin_border_side
     )
 
-    # 1. العنوان الرئيسي للملف
+    # 1. Main File Title
     title_text = f"Calculation of Validation for {test_title}" if test_title else "Calculation of Validation"
     ws.merge_cells("A1:K1")
     ws["A1"] = title_text
@@ -73,7 +73,7 @@ def generate_validation_excel(
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
     ws["A1"].alignment = align_center
 
-    # 2. جدول المعايرة
+    # 2. Calibration Table
     ws.merge_cells("A4:C4")
     ws["A4"] = "Calibration STD"
     ws["A4"].font = font_bold
@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول القيم الحرجة لـ Grubbs (الجدول البنفسجي المميز) والمرجع أسفله
+    # 3. Grubbs Critical Values Table & Reference
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -132,14 +132,14 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].border = thin_border
         last_grubbs_row = row_idx
 
-    # إضافة مرجع الكتاب أسفل الجدول مباشرة بشكل واضح وغير متداخل
+    # Reference text below the table
     ref_row = last_grubbs_row + 1
     ws.merge_cells(f"J{ref_row}:K{ref_row+1}")
     ws[f"J{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
     ws[f"J{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"J{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 4. المخطط البياني (بحجم مناسب وعدم تداخل)
+    # 4. Scatter Chart
     chart = ScatterChart()
     chart.title = None
 
@@ -200,7 +200,7 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 5. RSQ و t-value و Spiked Level
+    # 5. RSQ, t-value, Spiked Level
     rsq_row = end_cal_row + 2
     tval_row = rsq_row + 1
     spiked_row = tval_row + 1
@@ -224,7 +224,7 @@ def generate_validation_excel(
         ws[f"B{r}"].alignment = align_center
         ws[f"B{r}"].number_format = "0.0000"
 
-    # 6. جدول Level 1
+    # 6. Level 1 Table
     l1_title_row = spiked_row + 2
     l1_header_row = l1_title_row + 1
     start_sample_row = l1_header_row + 1
@@ -252,7 +252,7 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # 7. الإحصائيات
+    # 7. Statistics & Calculations
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
@@ -275,14 +275,10 @@ def generate_validation_excel(
         ws[f"B{i}"] = formula
         ws[f"B{i}"].number_format = "0.0000"
 
-    # تطبيق معادلات Recovery و Outlier (Z-Score) ومعادلة الحالة المصححة بدقة
+    # Formulas for Recovery and Outlier (Z-Score) & Status
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
-        
-        # معادلة Outlier (Z-Score)
         ws[f"D{r}"] = f"=ABS(B{r}-B${mean_row})/B${sd_row}"
-        
-        # معادلة Outlier Status المصححة مع مطابقة دقيقة وتثبيت الخلايا
         ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
         
         ws[f"C{r}"].number_format = "0.0000"
@@ -295,7 +291,7 @@ def generate_validation_excel(
     ws[f"F{start_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws[f"F{start_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 8. جدول Measurement Uncertainty
+    # 8. Measurement Uncertainty Table
     unc_header_row = l1_header_row
     unc_start_row = start_sample_row
 
@@ -342,7 +338,7 @@ def generate_validation_excel(
             ws[f"H{r_num}"].font = font_bold
             ws[f"I{r_num}"].font = font_bold
 
-    # تخصيص عرض الأعمدة مع إعطاء مساحة أوسع لعمودي J و K لضمان ظهور المرجع بوضوح تام
+    # Column Widths Setup
     column_widths = {
         "A": 22, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "J": 25, "K": 25
@@ -357,21 +353,21 @@ def generate_validation_excel(
 
 
 # ==========================================
-# ⚙️ واجهة المستخدم (Streamlit UI)
+# ⚙️ Streamlit User Interface (English Only)
 # ==========================================
-st.title("🧪 نظام التحقق من كفاءة الطرق التحليلية")
+st.title("🧪 Analytical Method Validation System")
 
 col_header1, col_header2 = st.columns(2)
 with col_header1:
-    test_name = st.text_input("اسم الاختبار / التحليل (مثلاً Benzo a pyrene)", "Benzo a pyrene")
+    test_name = st.text_input("Test / Analysis Name (e.g. Benzo a pyrene)", "Benzo a pyrene")
 with col_header2:
-    conc_unit = st.text_input("وحدة التركيز", "ppm")
+    conc_unit = st.text_input("Concentration Unit", "ppm")
 
 st.divider()
 
-st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
+st.subheader("📌 Calibration Standard Table (Calibration STD)")
 num_calib_levels = st.number_input(
-    "عدد مستويات المعايرة", min_value=1, max_value=30, value=6, step=1, key="calib_num_input"
+    "Number of Calibration Levels", min_value=1, max_value=30, value=6, step=1, key="calib_num_input"
 )
 
 default_concs = [0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
@@ -400,17 +396,17 @@ if "Area" in valid_std.columns:
 
 st.divider()
 
-st.subheader("📋 جدول العينات والمدخلات (Level 1)")
+st.subheader("📋 Samples & Inputs Table (Level 1)")
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
-    target_conc = st.number_input("مستوى الإضافة (Spiked Level)", value=10.0000, min_value=0.0, format="%.4f")
+    target_conc = st.number_input("Spiked Level", value=10.0000, min_value=0.0, format="%.4f")
 with col_input2:
-    t_val = st.number_input("قيمة t-statistic", value=2.5710, format="%.4f")
+    t_val = st.number_input("t-statistic value", value=2.5710, format="%.4f")
 with col_input3:
-    std_purity = st.number_input("نقاوة المحلول القياسي (Standard Purity)", value=0.9900, min_value=0.0, max_value=100.0, format="%.4f")
+    std_purity = st.number_input("Standard Purity", value=0.9900, min_value=0.0, max_value=100.0, format="%.4f")
 
 num_samples = st.number_input(
-    "عدد التكراريات / العينات", min_value=1, max_value=30, value=6, step=1, key="samples_num_input"
+    "Number of Replicates / Samples", min_value=1, max_value=30, value=6, step=1, key="samples_num_input"
 )
 
 sample_data = [
@@ -447,14 +443,14 @@ try:
     )
 
     st.download_button(
-        label="📥 تحميل تقرير Validation Excel المصدر بالشكل النهائي المطلوب",
+        label="📥 Download Final Validation Excel Report",
         data=excel_file,
         file_name="Method_Validation_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
 except Exception as e:
-    st.error(f"حدث خطأ أثناء إعداد ملف Excel: {e}")
+    st.error(f"An error occurred while generating the Excel file: {e}")
 
 st.caption("---")
 st.caption("Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026")
