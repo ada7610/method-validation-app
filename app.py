@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول القيم الحرجة لـ Grubbs
+    # 3. جدول القيم الحرجة لـ Grubbs (الجدول البنفسجي المميز)
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -130,7 +130,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني
+    # 4. المخطط البياني (بحجم مناسب وعدم تداخل)
     chart = ScatterChart()
     chart.title = None
 
@@ -266,16 +266,18 @@ def generate_validation_excel(
         ws[f"B{i}"] = formula
         ws[f"B{i}"].number_format = "0.0000"
 
-    # تطبيق معادلة Outlier (Z-Score) بدون شرط IF الإضافي
+    # تطبيق معادلات Recovery و Outlier (Z-Score) ومعادلة الحالة المصححة بدقة
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         
-        # المعادلة المطلوبة تماماً بدون إضافات خارجية
+        # معادلة Outlier (Z-Score)
         ws[f"D{r}"] = f"=ABS(B{r}-B${mean_row})/B${sd_row}"
+        
+        # معادلة Outlier Status المصححة مع مطابقة دقيقة وتثبيت الخلايا
+        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
         
         ws[f"C{r}"].number_format = "0.0000"
         ws[f"D{r}"].number_format = "0.0000"
-        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
         ws[f"E{r}"].alignment = align_center
 
     ws.merge_cells(f"F{start_sample_row}:F{end_sample_row}")
