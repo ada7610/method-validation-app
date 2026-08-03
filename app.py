@@ -130,7 +130,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (بدون عنوان، وبدون عناوين المحاور تحت ومن الجانب)
+    # 4. المخطط البياني في الإكسل (بحجم أصغر لعدم التداخل مع الخلايا)
     chart = ScatterChart()
     chart.title = None  # إلغاء العنوان الرئيسي
 
@@ -189,8 +189,10 @@ def generate_validation_excel(
     series.trendline = trendline
     chart.series.append(series)
     chart.legend = None
-    chart.width = 16
-    chart.height = 9
+    
+    # تصغير أبعاد المخطط لتجنب التغطية على الخلايا
+    chart.width = 13
+    chart.height = 7
     ws.add_chart(chart, "F3")
 
     # 5. RSQ و t-value و Spiked Level
