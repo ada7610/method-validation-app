@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول القيم الحرجة لـ Grubbs (الجدول البنفسجي المميز)
+    # 3. جدول القيم الحرجة لـ Grubbs (الجدول البنفسجي المميز) والمرجع أسفله
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -121,6 +121,7 @@ def generate_validation_excel(
         (7, 2.020), (8, 2.126), (9, 2.215), (10, 2.290)
     ]
 
+    last_grubbs_row = 5
     for row_idx, (n_val, g_crit) in enumerate(grubbs_table, 6):
         ws[f"J{row_idx}"] = n_val
         ws[f"K{row_idx}"] = g_crit
@@ -129,6 +130,14 @@ def generate_validation_excel(
         for c in ["J", "K"]:
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
+        last_grubbs_row = row_idx
+
+    # إضافة مرجع الكتاب أسفل الجدول مباشرة بشكل واضح وغير متداخل
+    ref_row = last_grubbs_row + 1
+    ws.merge_cells(f"J{ref_row}:K{ref_row+1}")
+    ws[f"J{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
+    ws[f"J{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
+    ws[f"J{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     # 4. المخطط البياني (بحجم مناسب وعدم تداخل)
     chart = ScatterChart()
@@ -333,9 +342,10 @@ def generate_validation_excel(
             ws[f"H{r_num}"].font = font_bold
             ws[f"I{r_num}"].font = font_bold
 
+    # تخصيص عرض الأعمدة مع إعطاء مساحة أوسع لعمودي J و K لضمان ظهور المرجع بوضوح تام
     column_widths = {
         "A": 22, "B": 24, "C": 18, "D": 18, "E": 18,
-        "F": 25, "H": 22, "I": 18, "J": 22, "K": 18
+        "F": 25, "H": 22, "I": 18, "J": 25, "K": 25
     }
     for col_letter, width in column_widths.items():
         ws.column_dimensions[col_letter].width = width
