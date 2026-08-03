@@ -67,7 +67,7 @@ def generate_validation_excel(
 
     # 1. Main File Title
     title_text = f"Calculation of Validation for {test_title}" if test_title else "Calculation of Validation"
-    ws.merge_cells("A1:K1")
+    ws.merge_cells("A1:N1")
     ws["A1"] = title_text
     ws["A1"].font = font_main_title
     ws["A1"].fill = PatternFill("solid", fgColor=COLOR_GREEN_HEADER)
@@ -101,16 +101,16 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. Grubbs Critical Values Table & Reference
-    ws.merge_cells("J4:K4")
-    ws["J4"] = "Critical values of G (P=0.05)"
-    ws["J4"].font = font_white_bold
-    ws["J4"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
-    ws["J4"].alignment = align_center
+    # 3. Grubbs Critical Values Table & Reference (Moved to columns M & N)
+    ws.merge_cells("M4:N4")
+    ws["M4"] = "Critical values of G (P=0.05)"
+    ws["M4"].font = font_white_bold
+    ws["M4"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
+    ws["M4"].alignment = align_center
 
-    ws["J5"] = "Sample size"
-    ws["K5"] = "Critical value"
-    for col_ref in ["J5", "K5"]:
+    ws["M5"] = "Sample size"
+    ws["N5"] = "Critical value"
+    for col_ref in ["M5", "N5"]:
         ws[col_ref].font = font_bold
         ws[col_ref].fill = PatternFill("solid", fgColor=COLOR_PURPLE_SUB)
         ws[col_ref].alignment = align_center
@@ -123,41 +123,40 @@ def generate_validation_excel(
 
     last_grubbs_row = 5
     for row_idx, (n_val, g_crit) in enumerate(grubbs_table, 6):
-        ws[f"J{row_idx}"] = n_val
-        ws[f"K{row_idx}"] = g_crit
-        ws[f"J{row_idx}"].alignment = align_center
-        ws[f"K{row_idx}"].number_format = "0.0000"
-        for c in ["J", "K"]:
+        ws[f"M{row_idx}"] = n_val
+        ws[f"N{row_idx}"] = g_crit
+        ws[f"M{row_idx}"].alignment = align_center
+        ws[f"N{row_idx}"].number_format = "0.0000"
+        for c in ["M", "N"]:
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
         last_grubbs_row = row_idx
 
     # Reference text below Grubbs table
     ref_row = last_grubbs_row + 1
-    ws.merge_cells(f"J{ref_row}:K{ref_row+1}")
-    ws[f"J{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
-    ws[f"J{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
-    ws[f"J{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    ws.merge_cells(f"M{ref_row}:N{ref_row+1}")
+    ws[f"M{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
+    ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
+    ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 3.1 Student's t-Critical Values Table (Added under Grubbs table)
+    # 3.1 Student's t-Critical Values Table (Moved to columns M & N)
     t_table_start_row = ref_row + 3
     
-    ws.merge_cells(f"J{t_table_start_row}:K{t_table_start_row}")
-    ws[f"J{t_table_start_row}"] = "Critical values of t (95% Confidence)"
-    ws[f"J{t_table_start_row}"].font = font_white_bold
-    ws[f"J{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
-    ws[f"J{t_table_start_row}"].alignment = align_center
+    ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
+    ws[f"M{t_table_start_row}"] = "Critical values of t (95% Confidence)"
+    ws[f"M{t_table_start_row}"].font = font_white_bold
+    ws[f"M{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
+    ws[f"M{t_table_start_row}"].alignment = align_center
 
     t_header_row = t_table_start_row + 1
-    ws[f"J{t_header_row}"] = "Sample size (n)"
-    ws[f"K{t_header_row}"] = "t-Critical"
-    for col_ref in [f"J{t_header_row}", f"K{t_header_row}"]:
+    ws[f"M{t_header_row}"] = "Sample size (n)"
+    ws[f"N{t_header_row}"] = "t-Critical"
+    for col_ref in [f"M{t_header_row}", f"N{t_header_row}"]:
         ws[col_ref].font = font_bold
         ws[col_ref].fill = PatternFill("solid", fgColor=COLOR_PURPLE_SUB)
         ws[col_ref].alignment = align_center
         ws[col_ref].border = thin_border
 
-    # t-critical values up to n=10 (two-tailed alpha = 0.05)
     t_crit_table = [
         (1, 12.706), (2, 4.303), (3, 3.182), (4, 2.776), (5, 2.571),
         (6, 2.447), (7, 2.365), (8, 2.306), (9, 2.262), (10, 2.228)
@@ -166,22 +165,21 @@ def generate_validation_excel(
     last_t_row = t_header_row
     for idx, (n_val, t_crit) in enumerate(t_crit_table):
         row_idx = t_header_row + 1 + idx
-        ws[f"J{row_idx}"] = n_val
-        ws[f"K{row_idx}"] = t_crit
-        ws[f"J{row_idx}"].alignment = align_center
-        ws[f"K{row_idx}"].number_format = "0.0003" # or 0.0000 format
-        ws[f"K{row_idx}"].number_format = "0.0000"
-        for c in ["J", "K"]:
+        ws[f"M{row_idx}"] = n_val
+        ws[f"N{row_idx}"] = t_crit
+        ws[f"M{row_idx}"].alignment = align_center
+        ws[f"N{row_idx}"].number_format = "0.0000"
+        for c in ["M", "N"]:
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
         last_t_row = row_idx
 
     # Reference text below t-table
     t_ref_row = last_t_row + 1
-    ws.merge_cells(f"J{t_ref_row}:K{t_ref_row+1}")
-    ws[f"J{t_ref_row}"] = "Ref: Student's t-distribution critical values table (Two-tailed, α = 0.05)."
-    ws[f"J{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
-    ws[f"J{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    ws.merge_cells(f"M{t_ref_row}:N{t_ref_row+1}")
+    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (Two-tailed, α = 0.05)."
+    ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
+    ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     # 4. Scatter Chart
     chart = ScatterChart()
@@ -319,11 +317,11 @@ def generate_validation_excel(
         ws[f"B{i}"] = formula
         ws[f"B{i}"].number_format = "0.0000"
 
-    # Formulas for Recovery and Outlier (Z-Score) & Status
+    # Formulas for Recovery and Outlier (Z-Score) referencing M column
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         ws[f"D{r}"] = f"=ABS(B{r}-B${mean_row})/B${sd_row}"
-        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
+        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), M$6:N$13, 2, FALSE), "Outlier", "Normal")'
         
         ws[f"C{r}"].number_format = "0.0000"
         ws[f"D{r}"].number_format = "0.0000"
@@ -382,10 +380,10 @@ def generate_validation_excel(
             ws[f"H{r_num}"].font = font_bold
             ws[f"I{r_num}"].font = font_bold
 
-    # Column Widths Setup
+    # Column Widths Setup (Added widths for M and N)
     column_widths = {
         "A": 22, "B": 24, "C": 18, "D": 18, "E": 18,
-        "F": 25, "H": 22, "I": 18, "J": 25, "K": 25
+        "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
     }
     for col_letter, width in column_widths.items():
         ws.column_dimensions[col_letter].width = width
