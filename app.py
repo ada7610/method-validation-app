@@ -408,7 +408,6 @@ num_calib_levels = st.number_input(
     "Number of Calibration Levels", min_value=1, max_value=30, value=6, step=1, key="calib_num_input"
 )
 
-# Empty rows initialized to 0.0000 for user entry
 calib_data = [
     {
         "Level": f"STD {i+1}",
@@ -437,7 +436,7 @@ col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
     target_conc = st.number_input("Spiked Level", value=0.0000, min_value=0.0, format="%.4f")
 with col_input2:
-    t_val = st.number_input("t-statistic value", value=2.5710, format="%.4f")
+    t_val = st.number_input("t-statistic value", value=0.0000, min_value=0.0, format="%.4f")
 with col_input3:
     std_purity = st.number_input("Standard Purity", value=0.0000, min_value=0.0, max_value=100.0, format="%.4f")
 
@@ -445,7 +444,6 @@ num_samples = st.number_input(
     "Number of Replicates / Samples", min_value=1, max_value=30, value=6, step=1, key="samples_num_input"
 )
 
-# Empty sample rows initialized for user entry
 sample_data = [
     {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000} for i in range(int(num_samples))
 ]
