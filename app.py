@@ -142,7 +142,7 @@ def generate_validation_excel(
     t_table_start_row = ref_row + 3
     
     ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
-    ws[f"M{t_table_start_row}"] = "Critical values of t (95% Confidence)"
+    ws[f"M{t_table_start_row}"] = "Critical values of t (97.5% Confidence)"
     ws[f"M{t_table_start_row}"].font = font_white_bold
     ws[f"M{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
     ws[f"M{t_table_start_row}"].alignment = align_center
@@ -175,7 +175,7 @@ def generate_validation_excel(
 
     t_ref_row = last_t_row + 1
     ws.merge_cells(f"M{t_ref_row}:N{t_ref_row+1}")
-    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (95% Confidence)."
+    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (97.5% Confidence)."
     ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -359,6 +359,7 @@ def generate_validation_excel(
     uD_row = uC_row + 1
     uComb_row = uD_row + 1
     uExp_row = uComb_row + 1
+    uPct_row = uExp_row + 1
 
     unc_labels = [
         (uA_row, "uA", f"=B{rsd_row}/100"),
@@ -367,13 +368,14 @@ def generate_validation_excel(
         (uD_row, "uD", f"=1 - SQRT(B{rsq_row})"),
         (uComb_row, "u combiend", f"=SQRT(I{uA_row}^2 + I{uB_row}^2 + I{uC_row}^2 + I{uD_row}^2)"),
         (uExp_row, "U expanded", f"=2*I{uComb_row}"),
+        (uPct_row, "U%", f"=I{uExp_row}*100"),
     ]
 
     for r_num, u_name, u_formula in unc_labels:
         ws[f"H{r_num}"] = u_name
         ws[f"I{r_num}"] = u_formula
         ws[f"I{r_num}"].number_format = "0.0000"
-        if u_name in ["u combiend", "U expanded"]:
+        if u_name in ["u combiend", "U expanded", "U%"]:
             ws[f"H{r_num}"].font = font_bold
             ws[f"I{r_num}"].font = font_bold
 
