@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. Grubbs Critical Values Table & Reference (Moved to columns M & N)
+    # 3. Grubbs Critical Values Table & Reference (Columns M & N)
     ws.merge_cells("M4:N4")
     ws["M4"] = "Critical values of G (P=0.05)"
     ws["M4"].font = font_white_bold
@@ -132,18 +132,17 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].border = thin_border
         last_grubbs_row = row_idx
 
-    # Reference text below Grubbs table
     ref_row = last_grubbs_row + 1
     ws.merge_cells(f"M{ref_row}:N{ref_row+1}")
     ws[f"M{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
     ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 3.1 Student's t-Critical Values Table (Moved to columns M & N)
+    # 3.1 Student's t-Critical Values Table (97.5% Confidence)
     t_table_start_row = ref_row + 3
     
     ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
-    ws[f"M{t_table_start_row}"] = "Critical values of t (95% Confidence)"
+    ws[f"M{t_table_start_row}"] = "Critical values of t (97.5% Confidence)"
     ws[f"M{t_table_start_row}"].font = font_white_bold
     ws[f"M{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
     ws[f"M{t_table_start_row}"].alignment = align_center
@@ -174,10 +173,9 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].border = thin_border
         last_t_row = row_idx
 
-    # Reference text below t-table
     t_ref_row = last_t_row + 1
     ws.merge_cells(f"M{t_ref_row}:N{t_ref_row+1}")
-    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (Two-tailed, α = 0.05)."
+    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (97.5% Confidence)."
     ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -317,7 +315,6 @@ def generate_validation_excel(
         ws[f"B{i}"] = formula
         ws[f"B{i}"].number_format = "0.0000"
 
-    # Formulas for Recovery and Outlier (Z-Score) referencing M column
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
         ws[f"D{r}"] = f"=ABS(B{r}-B${mean_row})/B${sd_row}"
@@ -380,7 +377,6 @@ def generate_validation_excel(
             ws[f"H{r_num}"].font = font_bold
             ws[f"I{r_num}"].font = font_bold
 
-    # Column Widths Setup (Added widths for M and N)
     column_widths = {
         "A": 22, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
@@ -401,9 +397,9 @@ st.title("🧪 Analytical Method Validation System")
 
 col_header1, col_header2 = st.columns(2)
 with col_header1:
-    test_name = st.text_input("Test / Analysis Name (e.g. Benzo a pyrene)", "Benzo a pyrene")
+    test_name = st.text_input("Test / Analysis Name (e.g. Benzo a pyrene)", "")
 with col_header2:
-    conc_unit = st.text_input("Concentration Unit", "ppm")
+    conc_unit = st.text_input("Concentration Unit", "")
 
 st.divider()
 
@@ -412,14 +408,12 @@ num_calib_levels = st.number_input(
     "Number of Calibration Levels", min_value=1, max_value=30, value=6, step=1, key="calib_num_input"
 )
 
-default_concs = [0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-default_areas = [10.5, 25.0, 100.2, 180.4, 720.5, 1550.0]
-
+# Empty rows initialized to 0.0000 for user entry
 calib_data = [
     {
         "Level": f"STD {i+1}",
-        "Concentration": default_concs[i] if i < len(default_concs) else 0.0000,
-        "Area": default_areas[i] if i < len(default_areas) else 0.0000
+        "Concentration": 0.0000,
+        "Area": 0.0000
     }
     for i in range(int(num_calib_levels))
 ]
@@ -441,16 +435,17 @@ st.divider()
 st.subheader("📋 Samples & Inputs Table (Level 1)")
 col_input1, col_input2, col_input3 = st.columns(3)
 with col_input1:
-    target_conc = st.number_input("Spiked Level", value=10.0000, min_value=0.0, format="%.4f")
+    target_conc = st.number_input("Spiked Level", value=0.0000, min_value=0.0, format="%.4f")
 with col_input2:
     t_val = st.number_input("t-statistic value", value=2.5710, format="%.4f")
 with col_input3:
-    std_purity = st.number_input("Standard Purity", value=0.9900, min_value=0.0, max_value=100.0, format="%.4f")
+    std_purity = st.number_input("Standard Purity", value=0.0000, min_value=0.0, max_value=100.0, format="%.4f")
 
 num_samples = st.number_input(
     "Number of Replicates / Samples", min_value=1, max_value=30, value=6, step=1, key="samples_num_input"
 )
 
+# Empty sample rows initialized for user entry
 sample_data = [
     {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000} for i in range(int(num_samples))
 ]
