@@ -132,12 +132,56 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].border = thin_border
         last_grubbs_row = row_idx
 
-    # Reference text below the table
+    # Reference text below Grubbs table
     ref_row = last_grubbs_row + 1
     ws.merge_cells(f"J{ref_row}:K{ref_row+1}")
     ws[f"J{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
     ws[f"J{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"J{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    # 3.1 Student's t-Critical Values Table (Added under Grubbs table)
+    t_table_start_row = ref_row + 3
+    
+    ws.merge_cells(f"J{t_table_start_row}:K{t_table_start_row}")
+    ws[f"J{t_table_start_row}"] = "Critical values of t (95% Confidence)"
+    ws[f"J{t_table_start_row}"].font = font_white_bold
+    ws[f"J{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
+    ws[f"J{t_table_start_row}"].alignment = align_center
+
+    t_header_row = t_table_start_row + 1
+    ws[f"J{t_header_row}"] = "Sample size (n)"
+    ws[f"K{t_header_row}"] = "t-Critical"
+    for col_ref in [f"J{t_header_row}", f"K{t_header_row}"]:
+        ws[col_ref].font = font_bold
+        ws[col_ref].fill = PatternFill("solid", fgColor=COLOR_PURPLE_SUB)
+        ws[col_ref].alignment = align_center
+        ws[col_ref].border = thin_border
+
+    # t-critical values up to n=10 (two-tailed alpha = 0.05)
+    t_crit_table = [
+        (1, 12.706), (2, 4.303), (3, 3.182), (4, 2.776), (5, 2.571),
+        (6, 2.447), (7, 2.365), (8, 2.306), (9, 2.262), (10, 2.228)
+    ]
+
+    last_t_row = t_header_row
+    for idx, (n_val, t_crit) in enumerate(t_crit_table):
+        row_idx = t_header_row + 1 + idx
+        ws[f"J{row_idx}"] = n_val
+        ws[f"K{row_idx}"] = t_crit
+        ws[f"J{row_idx}"].alignment = align_center
+        ws[f"K{row_idx}"].number_format = "0.0003" # or 0.0000 format
+        ws[f"K{row_idx}"].number_format = "0.0000"
+        for c in ["J", "K"]:
+            ws[f"{c}{row_idx}"].font = font_regular
+            ws[f"{c}{row_idx}"].border = thin_border
+        last_t_row = row_idx
+
+    # Reference text below t-table
+    t_ref_row = last_t_row + 1
+    ws.merge_cells(f"J{t_ref_row}:K{t_ref_row+1}")
+    ws[f"J{t_ref_row}"] = "Ref: Student's t-distribution critical values table (Two-tailed, α = 0.05)."
+    ws[f"J{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
+    ws[f"J{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     # 4. Scatter Chart
     chart = ScatterChart()
