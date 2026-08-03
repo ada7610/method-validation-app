@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول القيم الحرجة لـ Grubbs (مميز باللون البنفسجي حسب رغبتك)
+    # 3. جدول القيم الحرجة لـ Grubbs
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -130,7 +130,7 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني (بدون عنوان، بدون عناوين محاور، وبحجم مناسب)
+    # 4. المخطط البياني
     chart = ScatterChart()
     chart.title = None
 
@@ -266,11 +266,12 @@ def generate_validation_excel(
         ws[f"B{i}"] = formula
         ws[f"B{i}"].number_format = "0.0000"
 
-    # تطبيق معادلات Recovery و Outlier (Z-Score) المحدثة
+    # تطبيق معادلة Outlier (Z-Score) بدون شرط IF الإضافي
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
-        # المعادلة الجديدة لـ Outlier (Z-Score)
-        ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
+        
+        # المعادلة المطلوبة تماماً بدون إضافات خارجية
+        ws[f"D{r}"] = f"=ABS(B{r}-B${mean_row})/B${sd_row}"
         
         ws[f"C{r}"].number_format = "0.0000"
         ws[f"D{r}"].number_format = "0.0000"
