@@ -138,7 +138,7 @@ def generate_validation_excel(
     ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 3.1 Student's t-Critical Values Table (97.5% Confidence)
+    # 3.1 Student's t-Critical Values Table (95% Confidence)
     t_table_start_row = ref_row + 3
     
     ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
@@ -175,7 +175,7 @@ def generate_validation_excel(
 
     t_ref_row = last_t_row + 1
     ws.merge_cells(f"M{t_ref_row}:N{t_ref_row+1}")
-    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (97.5% Confidence)."
+    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (95% Confidence)."
     ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
