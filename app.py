@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # 3. جدول القيم الحرجة لـ Grubbs
+    # 3. جدول القيم الحرجة لـ Grubbs (مميز باللون البنفسجي حسب رغبتك)
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
     ws["J4"].font = font_white_bold
@@ -130,11 +130,10 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (بحجم أصغر لعدم التداخل مع الخلايا)
+    # 4. المخطط البياني (بدون عنوان، بدون عناوين محاور، وبحجم مناسب)
     chart = ScatterChart()
-    chart.title = None  # إلغاء العنوان الرئيسي
+    chart.title = None
 
-    # إزالة عناوين المحاور من التحت ومن الجانب
     chart.x_axis.title = None
     chart.y_axis.title = None
 
@@ -154,7 +153,6 @@ def generate_validation_excel(
     chart.plot_area.graphicalProperties = GraphicalProperties()
     chart.plot_area.graphicalProperties.noFill = True
 
-    # خطوط الشبكة للمحور X و Y
     chart.x_axis.majorGridlines = ChartLines()
     chart.x_axis.majorGridlines.graphicalProperties = GraphicalProperties()
     chart.x_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
@@ -171,7 +169,6 @@ def generate_validation_excel(
     series.marker.size = 6
     series.graphicalProperties.line.noFill = True
 
-    # إلغاء عرض أي قيم أو أسماء على النقاط تماماً لتكون نظيفة
     series.dataLabels = DataLabelList()
     series.dataLabels.showVal = False
     series.dataLabels.showCatName = False
@@ -190,7 +187,6 @@ def generate_validation_excel(
     chart.series.append(series)
     chart.legend = None
     
-    # تصغير أبعاد المخطط لتجنب التغطية على الخلايا
     chart.width = 13
     chart.height = 7
     ws.add_chart(chart, "F3")
@@ -254,20 +250,6 @@ def generate_validation_excel(
     sd_row = stats_start_row + 2
     rsd_row = stats_start_row + 3
 
-    for r in range(start_sample_row, end_sample_row + 1):
-        ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
-        ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
-        ws[f"C{r}"].number_format = "0.0000"
-        ws[f"D{r}"].number_format = "0.0000"
-        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
-        ws[f"E{r}"].alignment = align_center
-
-    ws.merge_cells(f"F{start_sample_row}:F{end_sample_row}")
-    ws[f"F{start_sample_row}"] = "Any value higher than the critical value in the table is consider outlier"
-    ws[f"F{start_sample_row}"].font = Font(name="Calibri", size=9, bold=True)
-    ws[f"F{start_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
-    ws[f"F{start_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
@@ -283,6 +265,23 @@ def generate_validation_excel(
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
         ws[f"B{i}"].number_format = "0.0000"
+
+    # تطبيق معادلات Recovery و Outlier (Z-Score) المحدثة
+    for r in range(start_sample_row, end_sample_row + 1):
+        ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
+        # المعادلة الجديدة لـ Outlier (Z-Score)
+        ws[f"D{r}"] = f"=IF(B${sd_row}=0, 0, ABS(B{r}-B${mean_row})/B${sd_row})"
+        
+        ws[f"C{r}"].number_format = "0.0000"
+        ws[f"D{r}"].number_format = "0.0000"
+        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_sample_row}:B${end_sample_row}), J$6:K$13, 2, FALSE), "Outlier", "Normal")'
+        ws[f"E{r}"].alignment = align_center
+
+    ws.merge_cells(f"F{start_sample_row}:F{end_sample_row}")
+    ws[f"F{start_sample_row}"] = "Any value higher than the critical value in the table is consider outlier"
+    ws[f"F{start_sample_row}"].font = Font(name="Calibri", size=9, bold=True)
+    ws[f"F{start_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
+    ws[f"F{start_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     # 8. جدول Measurement Uncertainty
     unc_header_row = l1_header_row
