@@ -142,7 +142,7 @@ def generate_validation_excel(
     t_table_start_row = ref_row + 3
     
     ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
-    ws[f"M{t_table_start_row}"] = "Critical values of t (97.5% Confidence)"
+    ws[f"M{t_table_start_row}"] = "Critical values of t (95% Confidence)"
     ws[f"M{t_table_start_row}"].font = font_white_bold
     ws[f"M{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
     ws[f"M{t_table_start_row}"].alignment = align_center
