@@ -142,7 +142,7 @@ def generate_validation_excel(
     t_table_start_row = ref_row + 3
     
     ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
-    ws[f"M{t_table_start_row}"] = "Critical values of t (95% Confidence)"
+    ws[f"M{t_table_start_row}"] = "Critical values of t (97.5% Confidence)"
     ws[f"M{t_table_start_row}"].font = font_white_bold
     ws[f"M{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
     ws[f"M{t_table_start_row}"].alignment = align_center
@@ -175,7 +175,7 @@ def generate_validation_excel(
 
     t_ref_row = last_t_row + 1
     ws.merge_cells(f"M{t_ref_row}:N{t_ref_row+1}")
-    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (95% Confidence)."
+    ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (97.5% Confidence)."
     ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -264,8 +264,8 @@ def generate_validation_excel(
         ws[f"B{r}"].alignment = align_center
         ws[f"B{r}"].number_format = "0.0000"
 
-    # 6. Level 1 Table
-    l1_title_row = spiked_row + 2
+    # 6. Level 1 Table (نزلت 3 صفوف إضافية)
+    l1_title_row = spiked_row + 5
     l1_header_row = l1_title_row + 1
     start_sample_row = l1_header_row + 1
 
@@ -330,7 +330,7 @@ def generate_validation_excel(
     ws[f"F{start_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws[f"F{start_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 8. Measurement Uncertainty Table
+    # 8. Measurement Uncertainty Table & Standard Purity (نزلت 3 صفوف إضافية)
     unc_header_row = l1_header_row
     unc_start_row = start_sample_row
 
