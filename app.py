@@ -80,15 +80,15 @@ def generate_validation_excel(
     ws["A4"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
     ws["A4"].alignment = align_center
 
-    unit_header = f"Concentration ({unit_str})" if unit_str else "Concentration"
+    unit_header = f"concentration ({unit_str})" if unit_str else "concentration"
     ws["A5"] = "Level"
     ws["B5"] = unit_header
-    ws["C5"] = "Area"
+    ws["C5"] = "area"
 
     for col in ["A", "B", "C"]:
         ws[f"{col}5"].font = font_bold
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{col}5"].alignment = align_center
+        ws[f"C{col}5" if col=="C" else f"{col}5"].alignment = align_center
 
     start_cal_row = 6
     for idx, row in calib_df.iterrows():
@@ -100,6 +100,9 @@ def generate_validation_excel(
         ws[f"C{r}"].number_format = "0.0000"
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
+
+    # وضع اسم الاختبار في خلية منفصلة لربطه بالمخطط (مثلاً خلية L1 أو مباشرة استخدام test_title)
+    ws["L1"] = test_title if test_title else "Calibration Curve"
 
     # 3. جدول القيم الحرجة لـ Grubbs
     ws.merge_cells("J4:K4")
@@ -130,15 +133,15 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (فصل عناوين المحاور في أسطر منفصلة وبمسافة كافية عن الأرقام)
+    # 4. المخطط البياني في الإكسل (مطابق للصورة تماماً مع ربط العناوين بالجدول)
     chart = ScatterChart()
-    chart.title = test_name if test_name else "Calibration Curve"
+    # ربط عنوان المخطط بخلية L1 (اسم الاختبار فوق الجدول / المخطط)
+    chart.title = "='Validation Report'!$L$1"
 
-    # عزل العنوان في سطر منفصل بعيداً عن أرقام المحاور
-    chart.x_axis.title = f"\n\n\n{unit_header}"
-    chart.y_axis.title = f"{'Area'}\n\n\n"
+    # ربط عناوين المحاور بخلايا الجدول لتتحدث تلقائياً (المحور السيني بـ B5، والمحور الصادي بـ C5)
+    chart.x_axis.title = "='Validation Report'!$B$5"
+    chart.y_axis.title = "='Validation Report'!$C$5"
 
-    # تفعيل إظهار أرقام المحاور وضبط مواقعها بشكل قاطع
     chart.x_axis.delete = False
     chart.y_axis.delete = False
     chart.x_axis.crosses = "autoZero"
@@ -173,7 +176,7 @@ def generate_validation_excel(
     series.graphicalProperties.line.noFill = True
 
     series.dataLabels = DataLabelList()
-    series.dataLabels.showVal = True
+    series.dataLabels.showVal = False
     series.dataLabels.showCatName = False
     series.dataLabels.showSerName = False
 
@@ -189,8 +192,8 @@ def generate_validation_excel(
     series.trendline = trendline
     chart.series.append(series)
     chart.legend = None
-    chart.width = 15
-    chart.height = 8.5
+    chart.width = 16
+    chart.height = 9
     ws.add_chart(chart, "F3")
 
     # 5. RSQ و t-value و Spiked Level
@@ -349,7 +352,7 @@ st.title("🧪 نظام التحقق من كفاءة الطرق التحليلي
 
 col_header1, col_header2 = st.columns(2)
 with col_header1:
-    test_name = st.text_input("اسم الاختبار / التحليل (مثلاً B1)", "B1")
+    test_name = st.text_input("اسم الاختبار / التحليل (مثلاً Benzo a pyrene)", "Benzo a pyrene")
 with col_header2:
     conc_unit = st.text_input("وحدة التركيز", "ppm")
 
@@ -357,11 +360,11 @@ st.divider()
 
 st.subheader("📌 جدول المعايرة القياسي (Calibration STD)")
 num_calib_levels = st.number_input(
-    "عدد مستويات المعايرة", min_value=1, max_value=30, value=5, step=1, key="calib_num_input"
+    "عدد مستويات المعايرة", min_value=1, max_value=30, value=6, step=1, key="calib_num_input"
 )
 
-default_concs = [2.5, 5.0, 10.0, 15.0, 20.0]
-default_areas = [11.8, 20.9, 38.6, 62.1, 84.5]
+default_concs = [0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
+default_areas = [10.5, 25.0, 100.2, 180.4, 720.5, 1550.0]
 
 calib_data = [
     {
