@@ -88,7 +88,7 @@ def generate_validation_excel(
     for col in ["A", "B", "C"]:
         ws[f"{col}5"].font = font_bold
         ws[f"{col}5"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"C{col}5" if col=="C" else f"{col}5"].alignment = align_center
+        ws[f"{col}5"].alignment = align_center
 
     start_cal_row = 6
     for idx, row in calib_df.iterrows():
@@ -101,7 +101,7 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # وضع اسم الاختبار في خلية منفصلة لربطه بالمخطط (مثلاً خلية L1 أو مباشرة استخدام test_title)
+    # وضع اسم الاختبار في خلية منفصلة لربطه بالمخطط
     ws["L1"] = test_title if test_title else "Calibration Curve"
 
     # 3. جدول القيم الحرجة لـ Grubbs
@@ -133,12 +133,10 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (مطابق للصورة تماماً مع ربط العناوين بالجدول)
+    # 4. المخطط البياني في الإكسل (بدون أسماء فوق النقاط، مع بقاء الأرقام والروابط)
     chart = ScatterChart()
-    # ربط عنوان المخطط بخلية L1 (اسم الاختبار فوق الجدول / المخطط)
     chart.title = "='Validation Report'!$L$1"
 
-    # ربط عناوين المحاور بخلايا الجدول لتتحدث تلقائياً (المحور السيني بـ B5، والمحور الصادي بـ C5)
     chart.x_axis.title = "='Validation Report'!$B$5"
     chart.y_axis.title = "='Validation Report'!$C$5"
 
@@ -175,6 +173,7 @@ def generate_validation_excel(
     series.marker.size = 6
     series.graphicalProperties.line.noFill = True
 
+    # إلغاء عرض أي قيم أو أسماء على النقاط تماماً لتكون نظيفة
     series.dataLabels = DataLabelList()
     series.dataLabels.showVal = False
     series.dataLabels.showCatName = False
