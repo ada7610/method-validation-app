@@ -101,9 +101,6 @@ def generate_validation_excel(
 
     end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
 
-    # وضع اسم الاختبار في خلية منفصلة لربطه بالمخطط
-    ws["L1"] = test_title if test_title else "Calibration Curve"
-
     # 3. جدول القيم الحرجة لـ Grubbs
     ws.merge_cells("J4:K4")
     ws["J4"] = "Critical values of G (P=0.05)"
@@ -133,12 +130,13 @@ def generate_validation_excel(
             ws[f"{c}{row_idx}"].font = font_regular
             ws[f"{c}{row_idx}"].border = thin_border
 
-    # 4. المخطط البياني في الإكسل (بدون أسماء فوق النقاط، مع بقاء الأرقام والروابط)
+    # 4. المخطط البياني في الإكسل (بدون عنوان، وبدون عناوين المحاور تحت ومن الجانب)
     chart = ScatterChart()
-    chart.title = "='Validation Report'!$L$1"
+    chart.title = None  # إلغاء العنوان الرئيسي
 
-    chart.x_axis.title = "='Validation Report'!$B$5"
-    chart.y_axis.title = "='Validation Report'!$C$5"
+    # إزالة عناوين المحاور من التحت ومن الجانب
+    chart.x_axis.title = None
+    chart.y_axis.title = None
 
     chart.x_axis.delete = False
     chart.y_axis.delete = False
