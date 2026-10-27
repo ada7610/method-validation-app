@@ -712,7 +712,7 @@ try:
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
         
-    elif lod_method == "Determination on Blank":
+   elif lod_method == "Determination on Blank":
         st.subheader("🧪 Blank Samples Data Table")
         num_blanks = st.number_input("Number of Blank Replicates", min_value=1, max_value=30, value=3, step=1, key="num_blanks_input")
         
@@ -736,26 +736,7 @@ try:
         st.success(f"📊 Calculated Blank Mean: **{blank_mean_calc:.6f}** | Calculated Blank SD: **{blank_sd_calc:.6f}**")
         
         extra_params["blank_mean"] = blank_mean_calc
-        extra_params["blank_sd"] = blank_sd_calc
-     # 📌 حسابات وعرض جدول Determination on Blank في ملف الإكسل (بعد جدول الكاليبريشن مباشرة)
-    if lod_method == "Determination on Blank":
-        blank_title_row = start_cal_row + (len(calib_df) if calib_df is not None and not calib_df.empty else 6) + 3
-        blank_header_row = blank_title_row + 1
-        start_blank_sample_row = blank_header_row + 1
-        
-        ws.merge_cells(f"A{blank_title_row}:B{blank_title_row}")
-        ws[f"A{blank_title_row}"] = "Determination on Blank"
-        ws[f"A{blank_title_row}"].font = font_bold
-        ws[f"A{blank_title_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-        ws[f"A{blank_title_row}"].alignment = align_center
-        
-        ws[f"A{blank_header_row}"] = "Blank Sample"
-        ws[f"B{blank_header_row}"] = unit_header
-        for col_char in ["A", "B"]:
-            ws[f"{col_char}{blank_header_row}"].font = font_bold
-            ws[f"{col_char}{blank_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-            ws[f"{col_char}{blank_header_row}"].alignment = align_center
-    st.divider()
+        extra_params["blank_sd"] = blank_sd_calc    st.divider()
 
     # Generate Excel Report Button
     if st.button("📥 Generate Validation Excel Report", type="primary", use_container_width=True):
