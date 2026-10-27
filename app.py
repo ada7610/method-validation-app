@@ -500,13 +500,19 @@ def generate_validation_excel(
             if u_name in ["u combiend", "U expanded", "U%"]:
                 ws[f"H{r_num}"].font = font_bold
                 ws[f"I{r_num}"].font = font_bold
-# تحديد السطر الأخير بدقة (سواء كان Level 1 هو الأخير أو Level 2)
+# تحديد السطر الأخير بدقة (نازل خانتين عن آخر جدول)
     final_row = (l2_unc_start + len(level2_df) + 3) if (has_level2 and level2_df is not None and not level2_df.empty) else (uPct_row + 3)
 
-    # سطر المرجع المظلل بالأخضر في نهاية الملف بخانتين تحت آخر جدول
-    ws[f"A{final_row}"] = f"Method: {lod_method} | Ref: ICH Q2 (R1) / USP Validation Protocol"
-    ws[f"A{final_row}"].font = Font(name="Calibri", size=10, italic=True, bold=False, color="000000")
-    ws[f"A{final_row}"].fill = PatternFill("solid", fgColor="C6EFCE")
+    # دمج الخلايا من B إلى F (أو حسب رغبتك) وتنسيق سطر المرجع الأخضر مثل الصورة
+    ws.merge_cells(f"B{final_row}:F{final_row}")
+    ws[f"B{final_row}"] = f"Method: {lod_method} | Ref: ICH Q2 (R1) / USP Validation Protocol"
+    ws[f"B{final_row}"].font = Font(name="Calibri", size=10, italic=True, bold=True, color="000000")
+    ws[f"B{final_row}"].fill = PatternFill("solid", fgColor="C6EFCE")
+    ws[f"B{final_row}"].alignment = Alignment(horizontal="center", vertical="center")
+    
+    # إضافة حدود خفيفة للخلية المدمجة لتبدو مرتبة
+    for col_char in ["B", "C", "D", "E", "F"]:
+        ws[f"{col_char}{final_row}"].border = thin_border
     column_widths = {
         "A": 26, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
