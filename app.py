@@ -526,6 +526,16 @@ def generate_validation_excel(
         "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
     }
     
+    # 📌 Dynamic Footer References (Bottom of File)
+    references_dict = {
+        "t-Statistic & SD (Default)": "ICH Q2(R1) / USP Validation Protocol",
+        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) Validation of Analytical Procedures",
+        "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
+        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur.",
+        "Standard Deviation of Blanks": "IUPAC Guidelines for Calibration in Analytical Chemistry",
+        "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
+    }
+    
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
 
     # العثور على أبعد سطر تم استخدام فيه بيانات أو جداول في كامل الشيت
@@ -541,8 +551,7 @@ def generate_validation_excel(
     
     # إضافة حدود خفيفة للخلية المدمجة لتبدو مرتبة
     for col_char in ["B", "C", "D", "E", "F"]:
-        ws[f"{col_char}{final_row}"].border = thin_border
-    column_widths = {
+        ws[f"{col_char}{final_row}"].border = thin_border    column_widths = {
         "A": 26, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
     }
