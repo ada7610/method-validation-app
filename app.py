@@ -662,7 +662,6 @@ try:
             "t-Statistic & SD (Default)",
             "Slope & SD of Intercept (Sa)",
             "Slope & Residual SD (Sy/x)",
-            "Signal-to-Noise Ratio (S/N)",
             "Determination on Blank",
             "Manual / Visual / Low Recovery",
         ],
