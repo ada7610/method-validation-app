@@ -146,6 +146,47 @@ def generate_validation_excel(
     ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
+    # 3.1 Student's t-Critical Values Table (يظهر فقط إذا كان الخيار t-Statistic & SD)
+    if lod_method == "t-Statistic & SD (Default)":
+        t_table_start_row = ref_row + 3
+        ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
+        ws[f"M{t_table_start_row}"] = "Critical values of t (95% Confidence)"
+        ws[f"M{t_table_start_row}"].font = font_white_bold
+        ws[f"M{t_table_start_row}"].fill = PatternFill("solid", fgColor=COLOR_PURPLE_HEADER)
+        ws[f"M{t_table_start_row}"].alignment = align_center
+
+        t_header_row = t_table_start_row + 1
+        ws[f"M{t_header_row}"] = "Sample size (n)"
+        ws[f"N{t_header_row}"] = "t-Critical"
+        for col_ref in [f"M{t_header_row}", f"N{t_header_row}"]:
+            ws[col_ref].font = font_bold
+            ws[col_ref].fill = PatternFill("solid", fgColor=COLOR_PURPLE_SUB)
+            ws[col_ref].alignment = align_center
+            ws[col_ref].border = thin_border
+
+        t_crit_table = [
+            (1, 12.706), (2, 4.303), (3, 3.182), (4, 2.776), (5, 2.571),
+            (6, 2.447), (7, 2.365), (8, 2.306), (9, 2.262), (10, 2.228)
+        ]
+
+        last_t_row = t_header_row
+        for idx, (n_val, t_crit) in enumerate(t_crit_table):
+            row_idx = t_header_row + 1 + idx
+            ws[f"M{row_idx}"] = n_val
+            ws[f"N{row_idx}"] = t_crit
+            ws[f"M{row_idx}"].alignment = align_center
+            ws[f"N{row_idx}"].number_format = "0.0000"
+            for c in ["M", "N"]:
+                ws[f"{c}{row_idx}"].font = font_regular
+                ws[f"{c}{row_idx}"].border = thin_border
+            last_t_row = row_idx
+
+        t_ref_row = last_t_row + 1
+        ws.merge_cells(f"M{t_ref_row}:N{t_ref_row+1}")
+        ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (95% Confidence)."
+        ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
+        ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
     # 4. Scatter Chart
     try:
         chart = ScatterChart()
@@ -334,401 +375,4 @@ def generate_validation_excel(
 
     purity_row = unc_header_row - 1
     ws[f"H{purity_row}"] = "Standard Purity"
-    ws[f"H{purity_row}"].font = font_bold
-    purity_val = std_purity / 100.0 if std_purity > 1.0 else std_purity
-    ws[f"I{purity_row}"] = purity_val
-    ws[f"I{purity_row}"].number_format = "0.0000"
-
-    uA_row = unc_start_row + 1
-    uB_row = uA_row + 1
-    uC_row = uB_row + 1
-    uD_row = uC_row + 1
-    uComb_row = uD_row + 1
-    uExp_row = uComb_row + 1
-    uPct_row = uExp_row + 1
-
-    l1_unc_labels = [
-        (uA_row, "uA", f"=B{l1_rsd_row}/100"),
-        (uB_row, "uB", f"=ABS(0.5*(1 - (B{l1_rec_row}/100)))/SQRT(3)"),
-        (uC_row, "uC", f"=0.5*(1 - I{purity_row})/SQRT(3)"),
-        (uD_row, "uD", f"=1 - SQRT(B{rsq_row})"),
-        (uComb_row, "u combiend", f"=SQRT(I{uA_row}^2 + I{uB_row}^2 + I{uC_row}^2 + I{uD_row}^2)"),
-        (uExp_row, "U expanded", f"=2*I{uComb_row}"),
-        (uPct_row, "U%", f"=I{uExp_row}*100"),
-    ]
-
-    for r_num, u_name, u_formula in l1_unc_labels:
-        ws[f"H{r_num}"] = u_name
-        ws[f"I{r_num}"] = u_formula
-        ws[f"I{r_num}"].number_format = "0.0000"
-        if u_name in ["u combiend", "U expanded", "U%"]:
-            ws[f"H{r_num}"].font = font_bold
-            ws[f"I{r_num}"].font = font_bold
-
-    current_max_row = max(l1_stats_start + 6, uPct_row + 2)
-
-    # 7. Level 2 Table (Optional - Without LOD/LOQ)
-    if has_level2 and level2_df is not None and not level2_df.empty:
-        l2_title_row = current_max_row + 2
-        l2_header_row = l2_title_row + 1
-        start_l2_sample_row = l2_header_row + 1
-
-        ws.merge_cells(f"A{l2_title_row}:E{l2_title_row}")
-        ws[f"A{l2_title_row}"] = f"Level 2 ({unit_str})" if unit_str else "Level 2"
-        ws[f"A{l2_title_row}"].font = font_bold
-        ws[f"A{l2_title_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-        ws[f"A{l2_title_row}"].alignment = align_center
-
-        for c, h in zip(["A", "B", "C", "D", "E"], headers_l1):
-            ws[f"{c}{l2_header_row}"] = h
-            ws[f"{c}{l2_header_row}"].font = font_bold
-            ws[f"{c}{l2_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-            ws[f"{c}{l2_header_row}"].alignment = align_center
-
-        for idx, row in level2_df.iterrows():
-            r = idx + start_l2_sample_row
-            ws[f"A{r}"] = str(row.get("Sample Name", ""))
-            ws[f"B{r}"] = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
-            ws[f"B{r}"].number_format = "0.0000"
-
-        end_l2_sample_row = max(len(level2_df) + start_l2_sample_row - 1, start_l2_sample_row)
-
-        l2_stats_start = end_l2_sample_row + 2
-        l2_mean_row = l2_stats_start
-        l2_rec_row = l2_stats_start + 1
-        l2_sd_row = l2_stats_start + 2
-        l2_rsd_row = l2_stats_start + 3
-
-        l2_stats_labels = [
-            ("Mean", f"=AVERAGE(B{start_l2_sample_row}:B{end_l2_sample_row})"),
-            ("Recovery %", f"=AVERAGE(C{start_l2_sample_row}:C{end_l2_sample_row})"),
-            ("Standerd Deviation", f"=STDEV(B{start_l2_sample_row}:B{end_l2_sample_row})"),
-            ("RSD %", f"=IF(B{l2_mean_row}=0, 0, (B{l2_sd_row}/B{l2_mean_row})*100)"),
-        ]
-
-        for i, (label, formula) in enumerate(l2_stats_labels, start=l2_stats_start):
-            ws[f"A{i}"] = label
-            ws[f"A{i}"].font = font_bold
-            ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-            ws[f"B{i}"] = formula
-            ws[f"B{i}"].number_format = "0.0000"
-
-        for r in range(start_l2_sample_row, end_l2_sample_row + 1):
-            ws[f"C{r}"] = f"=IF(B{spiked_l2_row}=0, 0, (B{r}/B{spiked_l2_row})*100)"
-            ws[f"D{r}"] = f"=ABS(B{r}-B${l2_mean_row})/B${l2_sd_row}"
-            ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_l2_sample_row}:B${end_l2_sample_row}), M$6:N$13, 2, FALSE), "Outlier", "Normal")'
-            ws[f"C{r}"].number_format = "0.0000"
-            ws[f"D{r}"].number_format = "0.0000"
-            ws[f"E{r}"].alignment = align_center
-
-        ws.merge_cells(f"F{start_l2_sample_row}:F{end_l2_sample_row}")
-        ws[f"F{start_l2_sample_row}"] = "Any value higher than the critical value in the table is consider outlier"
-        ws[f"F{start_l2_sample_row}"].font = Font(name="Calibri", size=9, bold=True)
-        ws[f"F{start_l2_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
-        ws[f"F{start_l2_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-        # Measurement Uncertainty for Level 2
-        l2_unc_start = start_l2_sample_row
-        ws.merge_cells(f"H{l2_unc_start-1}:I{l2_unc_start-1}")
-        ws[f"H{l2_unc_start-1}"] = "Level 2"
-        ws[f"H{l2_unc_start-1}"].font = font_bold
-        ws[f"H{l2_unc_start-1}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-        ws[f"H{l2_unc_start-1}"].alignment = align_center
-
-        luA_row = l2_unc_start + 1
-        luB_row = luA_row + 1
-        luC_row = luB_row + 1
-        luD_row = luC_row + 1
-        luComb_row = luD_row + 1
-        luExp_row = luComb_row + 1
-        luPct_row = luExp_row + 1
-
-        l2_unc_labels = [
-            (luA_row, "uA", f"=B{l2_rsd_row}/100"),
-            (luB_row, "uB", f"=ABS(0.5*(1 - (B{l2_rec_row}/100)))/SQRT(3)"),
-            (luC_row, "uC", f"=0.5*(1 - I{purity_row})/SQRT(3)"),
-            (luD_row, "uD", f"=1 - SQRT(B{rsq_row})"),
-            (luComb_row, "u combiend", f"=SQRT(I{luA_row}^2 + I{luB_row}^2 + I{luC_row}^2 + I{luD_row}^2)"),
-            (luExp_row, "U expanded", f"=2*I{luComb_row}"),
-            (luPct_row, "U%", f"=I{luExp_row}*100"),
-        ]
-
-        for r_num, u_name, u_formula in l2_unc_labels:
-            ws[f"H{r_num}"] = u_name
-            ws[f"I{r_num}"] = u_formula
-            ws[f"I{r_num}"].number_format = "0.0000"
-            if u_name in ["u combiend", "U expanded", "U%"]:
-                ws[f"H{r_num}"].font = font_bold
-                ws[f"I{r_num}"].font = font_bold
-
-    column_widths = {
-        "A": 26, "B": 24, "C": 18, "D": 18, "E": 18,
-        "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
-    }
-    for col_letter, width in column_widths.items():
-        ws.column_dimensions[col_letter].width = width
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return output.getvalue()
-
-
-# ==========================================
-# ⚙️ Streamlit User Interface (Fully Protected)
-# ==========================================
-try:
-    st.title("🧪 Analytical Method Validation System")
-
-    col_header1, col_header2 = st.columns(2)
-    with col_header1:
-        test_name = st.text_input("Test / Analysis Name (e.g. Benzo a pyrene)", "", key="test_name_input")
-    with col_header2:
-        conc_unit = st.text_input("Concentration Unit", "", key="conc_unit_input")
-
-    st.divider()
-
-    st.subheader("📌 Calibration Standard Table (Calibration STD)")
-    num_calib_levels = st.number_input(
-        "Number of Calibration Levels", min_value=1, max_value=30, value=6, step=1, key="calib_num_input"
-    )
-
-    calib_data = [
-        {
-            "Level": f"STD {i+1}",
-            "Concentration": 0.0000,
-            "Area": 0.0000
-        }
-        for i in range(int(num_calib_levels))
-    ]
-
-    valid_std_raw = st.data_editor(
-        pd.DataFrame(calib_data), num_rows="dynamic", key="calib_table_editor", use_container_width=True
-    )
-
-    valid_std = valid_std_raw.dropna(how="all").copy() if valid_std_raw is not None else pd.DataFrame(calib_data)
-    if "Level" in valid_std.columns:
-        valid_std["Level"] = valid_std["Level"].fillna("")
-    if "Concentration" in valid_std.columns:
-        valid_std["Concentration"] = pd.to_numeric(valid_std["Concentration"], errors="coerce").fillna(0.0)
-    if "Area" in valid_std.columns:
-        valid_std["Area"] = pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
-
-    st.divider()
-
-    # ==========================================
-    # 🎯 Selection of LOD & LOQ Calculation Method
-    # ==========================================
-    st.subheader("🎯 LOD & LOQ Calculation Method")
-    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
-
-    lod_method = st.selectbox(
-        "Select Calculation Method",
-        options=[
-            "t-Statistic & SD (Default)",
-            "Slope & SD of Intercept (Sa)",
-            "Slope & Residual SD (Sy/x)",
-            "Signal-to-Noise Ratio (S/N)",
-            "Standard Deviation of Blanks",
-            "Manual / Visual / Low Recovery",
-        ],
-        index=0,
-        key="lod_method_select"
-    )
-
-    extra_params = {}
-
-    if lod_method == "t-Statistic & SD (Default)":
-        extra_params["t_val"] = st.number_input("Enter t-statistic value", value=2.5710, min_value=0.0, format="%.4f", key="t_val_input")
-
-    st.divider()
-
-    # ==========================================
-    # 📋 Level 1 Inputs & Table
-    # ==========================================
-    st.subheader("📋 Level 1 Samples & Inputs")
-
-    col_input1, col_input2 = st.columns(2)
-
-    with col_input1:
-        target_conc_l1 = st.number_input("Spiked Level 1", value=0.0000, min_value=0.0, format="%.4f", key="target_conc_l1_input")
-
-    with col_input2:
-        std_purity = st.number_input("Standard Purity (%)", value=0.0000, min_value=0.0, max_value=100.0, format="%.4f", key="std_purity_input")
-
-    num_samples_l1 = st.number_input(
-        "Number of Replicates / Samples (Level 1)", min_value=1, max_value=30, value=6, step=1, key="samples_num_l1_input"
-    )
-
-    sample_data_l1 = [
-        {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000} for i in range(int(num_samples_l1))
-    ]
-
-    edited_samples_l1_raw = st.data_editor(
-        pd.DataFrame(sample_data_l1), num_rows="dynamic", key="samples_table_l1_editor", use_container_width=True
-    )
-
-    edited_samples_l1 = edited_samples_l1_raw.dropna(how="all").copy() if edited_samples_l1_raw is not None else pd.DataFrame(sample_data_l1)
-    if "Sample Name" in edited_samples_l1.columns:
-        edited_samples_l1["Sample Name"] = edited_samples_l1["Sample Name"].fillna("")
-    if "Concentration" in edited_samples_l1.columns:
-        edited_samples_l1["Concentration"] = pd.to_numeric(edited_samples_l1["Concentration"], errors="coerce").fillna(0.0)
-
-    st.divider()
-
-    # ==========================================
-    # ➕ Level 2 Optional Addition
-    # ==========================================
-    has_level2 = st.checkbox("➕ Add Level 2 Samples Table", value=False, key="has_level2_checkbox")
-
-    target_conc_l2 = 0.0000
-    edited_samples_l2 = None
-
-    if has_level2:
-        st.subheader("📋 Level 2 Samples & Inputs")
-        target_conc_l2 = st.number_input("Spiked Level 2", value=0.0000, min_value=0.0, format="%.4f", key="target_conc_l2_input")
-
-        num_samples_l2 = st.number_input(
-            "Number of Replicates / Samples (Level 2)", min_value=1, max_value=30, value=6, step=1, key="samples_num_l2_input"
-        )
-
-        sample_data_l2 = [
-            {"Sample Name": f"Sample {i+1}", "Concentration": 0.0000} for i in range(int(num_samples_l2))
-        ]
-
-        edited_samples_l2_raw = st.data_editor(
-            pd.DataFrame(sample_data_l2), num_rows="dynamic", key="samples_table_l2_editor", use_container_width=True
-        )
-
-        edited_samples_l2 = edited_samples_l2_raw.dropna(how="all").copy() if edited_samples_l2_raw is not None else pd.DataFrame(sample_data_l2)
-        if "Sample Name" in edited_samples_l2.columns:
-            edited_samples_l2["Sample Name"] = edited_samples_l2["Sample Name"].fillna("")
-        if "Concentration" in edited_samples_l2.columns:
-            edited_samples_l2["Concentration"] = pd.to_numeric(edited_samples_l2["Concentration"], errors="coerce").fillna(0.0)
-
-        st.divider()
-
-    # ==========================================
-    # 🧮 Calculations & Metrics (Level 1)
-    # ==========================================
-    calib_x = valid_std["Concentration"].values if not valid_std.empty and "Concentration" in valid_std.columns else np.array([0.0])
-    calib_y = valid_std["Area"].values if not valid_std.empty and "Area" in valid_std.columns else np.array([0.0])
-
-    n_calib = len(calib_x)
-    slope = 1.0
-    syx_auto = 0.0
-    sa_auto = 0.0
-
-    if n_calib > 2:
-        try:
-            valid_mask = (calib_x > 0) | (calib_y > 0)
-            cx = calib_x[valid_mask]
-            cy = calib_y[valid_mask]
-            if len(cx) > 2 and np.sum((cx - np.mean(cx))**2) != 0:
-                slope, intercept = np.polyfit(cx, cy, 1)
-                y_pred = slope * cx + intercept
-                residuals = cy - y_pred
-                sum_sq_residuals = np.sum(residuals**2)
-                df = len(cx) - 2
-                syx_auto = np.sqrt(sum_sq_residuals / df)
-                
-                sum_sq_x = np.sum((cx - np.mean(cx))**2)
-                sum_x2 = np.sum(cx**2)
-                sa_auto = syx_auto * np.sqrt(sum_x2 / (len(cx) * sum_sq_x))
-        except Exception:
-            pass
-
-    if lod_method == "Slope & SD of Intercept (Sa)":
-        st.success(f"✅ SD of Intercept (Sa) calculated automatically: **{sa_auto:.6f}** (Sy/x: {syx_auto:.6f}, Slope: {slope:.6f})")
-        extra_params["sa"] = sa_auto
-
-    elif lod_method == "Slope & Residual SD (Sy/x)":
-        st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
-        extra_params["syx"] = syx_auto
-
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        extra_params["noise"] = st.number_input(
-            "Baseline Noise Level", value=1.0000, min_value=0.0001, format="%.6f", key="noise_input",
-            help="LOD will be 3 × Noise, LOQ will be 10 × Noise"
-        )
-    elif lod_method == "Standard Deviation of Blanks":
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            extra_params["blank_mean"] = st.number_input("Mean of Blank Samples", value=0.0000, format="%.6f", key="blank_mean_input")
-        with col_b2:
-            extra_params["blank_sd"] = st.number_input("Standard Deviation of Blanks (s_blank)", value=0.0000, min_value=0.0, format="%.6f", key="blank_sd_input")
-    elif lod_method == "Manual / Visual / Low Recovery":
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            extra_params["manual_lod"] = st.number_input("Manual / Visual LOD Value", value=0.0000, min_value=0.0, format="%.6f", key="manual_lod_input")
-        with col_m2:
-            extra_params["manual_loq"] = st.number_input("Manual / Visual LOQ Value", value=0.0000, min_value=0.0, format="%.6f", key="manual_loq_input")
-
-    sample_concs_l1 = edited_samples_l1["Concentration"].values if not edited_samples_l1.empty and "Concentration" in edited_samples_l1.columns else np.array([0.0])
-    sample_sd_l1 = np.std(sample_concs_l1, ddof=1) if len(sample_concs_l1) > 1 else 0.0
-
-    if lod_method == "t-Statistic & SD (Default)":
-        t_val_val = extra_params.get("t_val", 2.571) if isinstance(extra_params, dict) else 2.571
-        calc_lod = t_val_val * sample_sd_l1
-        calc_loq = 10 * sample_sd_l1
-    elif lod_method == "Slope & SD of Intercept (Sa)":
-        calc_lod = (3.3 * sa_auto) / slope if slope != 0 else 0
-        calc_loq = (10 * sa_auto) / slope if slope != 0 else 0
-    elif lod_method == "Slope & Residual SD (Sy/x)":
-        calc_lod = (3.3 * syx_auto) / slope if slope != 0 else 0
-        calc_loq = (10 * syx_auto) / slope if slope != 0 else 0
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        noise = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
-        calc_lod = 3 * noise
-        calc_loq = 10 * noise
-    elif lod_method == "Standard Deviation of Blanks":
-        calc_lod = extra_params.get("blank_mean", 0.0) + (3 * extra_params.get("blank_sd", 0.0)) if isinstance(extra_params, dict) else 0.0
-        calc_loq = extra_params.get("blank_mean", 0.0) + (10 * extra_params.get("blank_sd", 0.0)) if isinstance(extra_params, dict) else 0.0
-    else:
-        calc_lod = extra_params.get("manual_lod", 0.0) if isinstance(extra_params, dict) else 0.0
-        calc_loq = extra_params.get("manual_loq", 0.0) if isinstance(extra_params, dict) else 0.0
-
-    col_lod, col_loq = st.columns(2)
-    with col_lod:
-        st.metric(label=f"Calculated LOD ({conc_unit})", value=f"{calc_lod:.6f}")
-    with col_loq:
-        st.metric(label=f"Calculated LOQ ({conc_unit})", value=f"{calc_loq:.6f}")
-
-    st.divider()
-
-    try:
-        calib_export = (
-            valid_std[["Level", "Concentration", "Area"]]
-            if valid_std is not None and not valid_std.empty and "Level" in valid_std.columns
-            else pd.DataFrame(columns=["Level", "Concentration", "Area"])
-        )
-
-        excel_file = generate_validation_excel(
-            calib_df=calib_export,
-            level1_df=edited_samples_l1,
-            level2_df=edited_samples_l2,
-            has_level2=has_level2,
-            test_title=test_name,
-            unit_str=conc_unit,
-            target_conc_l1=target_conc_l1,
-            target_conc_l2=target_conc_l2,
-            std_purity=std_purity,
-            lod_method=lod_method,
-            extra_params=extra_params
-        )
-
-        st.download_button(
-            label="📥 Download Final Validation Excel Report",
-            data=excel_file,
-            file_name="Method_Validation_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-        )
-    except Exception as e:
-        st.error(f"An error occurred while generating the Excel file: {e}")
-
-except Exception as app_err:
-    st.error(f"⚠️ Application Crash Prevented: {app_err}")
-
-st.caption("---")
-st.caption("Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026")
+    ws
