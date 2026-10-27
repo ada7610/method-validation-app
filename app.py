@@ -300,4 +300,36 @@ def generate_validation_excel(
     elif lod_method == "Slope & Residual SD (Sy/x)":
         syx_val = extra_params.get("syx", 0.0)
         lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
-        loq_formula
+        loq_formula = f"=(10*{syx_val})/B{slope_row}"
+    elif lod_method == "Signal-to-Noise Ratio (S/N)":
+        noise_val = extra_params.get("noise", 1.0)
+        lod_formula = f"=3*{noise_val}"
+        loq_formula = f"=10*{noise_val}"
+    elif lod_method == "Standard Deviation of Blanks":
+        blank_sd_val = extra_params.get("blank_sd", 0.0)
+        blank_mean_val = extra_params.get("blank_mean", 0.0)
+        lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
+        loq_formula = f"={blank_mean_val}+(10*{blank_sd_val})"
+    else:
+        manual_lod = extra_params.get("manual_lod", 0.0)
+        manual_loq = extra_params.get("manual_loq", 0.0)
+        lod_formula = float(manual_lod)
+        loq_formula = float(manual_loq)
+
+    stats_labels = [
+        ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
+        ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
+        ("Standerd Deviation", f"=STDEV(B{start_sample_row}:B{end_sample_row})"),
+        ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
+        ("LOD", lod_formula),
+        ("LOQ", loq_formula),
+    ]
+
+    for i, (label, formula) in enumerate(stats_labels, start=stats_start_row):
+        ws[f"A{i}"] = label
+        ws[f"A{i}"].font = font_bold
+        ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+        ws[f"B{i}"] = formula
+        ws[f"B{i}"].number_format = "0.0000"
+
+    for r in range(start_sample_row, end_sample_row + 1):
