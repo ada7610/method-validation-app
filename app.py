@@ -712,7 +712,7 @@ try:
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
         
-   elif lod_method == "Determination on Blank":
+  elif lod_method == "Determination on Blank":
         st.subheader("🧪 Blank Samples Data Table")
         num_blanks = st.number_input("Number of Blank Replicates", min_value=1, max_value=30, value=3, step=1, key="num_blanks_input")
         
@@ -728,7 +728,6 @@ try:
         if "Concentration" in edited_blanks.columns:
             edited_blanks["Concentration"] = pd.to_numeric(edited_blanks["Concentration"], errors="coerce").fillna(0.0)
             
-        # حساب الـ Mean والـ SD تلقائياً من الجدول
         blank_vals = edited_blanks["Concentration"].values if not edited_blanks.empty else np.array([0.0])
         blank_mean_calc = float(np.mean(blank_vals)) if len(blank_vals) > 0 else 0.0
         blank_sd_calc = float(np.std(blank_vals, ddof=1)) if len(blank_vals) > 1 else 0.0
@@ -736,7 +735,7 @@ try:
         st.success(f"📊 Calculated Blank Mean: **{blank_mean_calc:.6f}** | Calculated Blank SD: **{blank_sd_calc:.6f}**")
         
         extra_params["blank_mean"] = blank_mean_calc
-        extra_params["blank_sd"] = blank_sd_calc    st.divider()
+        extra_params["blank_sd"] = blank_sd_calc
 
     # Generate Excel Report Button
     if st.button("📥 Generate Validation Excel Report", type="primary", use_container_width=True):
