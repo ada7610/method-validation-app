@@ -44,7 +44,7 @@ with st.sidebar:
 # ==========================================
 def generate_validation_excel(
     calib_df, level1_df, level2_df, has_level2, test_title, unit_str, 
-    target_conc_l1, target_conc_l2, std_purity, lod_method, extra_params, blank_df=None
+    target_conc_l1, target_conc_l2, std_purity, lod_method, extra_params
 ):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -108,40 +108,6 @@ def generate_validation_excel(
         end_cal_row = max(len(calib_df) + start_cal_row - 1, start_cal_row)
     else:
         end_cal_row = start_cal_row
-
-    # 2.5 Optional Blank Table in Excel (if Determination on Blank is selected)
-    current_row_tracker = end_cal_row + 2
-    end_blank_row = current_row_tracker
-    
-    if lod_method == "Determination on Blank" and blank_df is not None and not blank_df.empty:
-        ws.merge_cells(f"A{current_row_tracker}:B{current_row_tracker}")
-        ws[f"A{current_row_tracker}"] = "Blank Samples"
-        ws[f"A{current_row_tracker}"].font = font_bold
-        ws[f"A{current_row_tracker}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-        ws[f"A{current_row_tracker}"].alignment = align_center
-
-        blank_header_row = current_row_tracker + 1
-        ws[f"A{blank_header_row}"] = "Sample Name"
-        ws[f"B{blank_header_row}"] = unit_header
-        
-        for col in ["A", "B"]:
-            ws[f"{col}{blank_header_row}"].font = font_bold
-            ws[f"{col}{blank_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-            ws[f"{col}{blank_header_row}"].alignment = align_center
-
-        start_blank_row = blank_header_row + 1
-        for idx, row in blank_df.iterrows():
-            r = idx + start_blank_row
-            ws[f"A{r}"] = str(row.get("Sample Name", ""))
-            ws[f"B{r}"] = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
-            ws[f"B{r}"].number_format = "0.0000"
-            ws[f"A{r}"].font = font_regular
-            ws[f"B{r}"].font = font_regular
-            ws[f"A{r}"].border = thin_border
-            ws[f"B{r}"].border = thin_border
-            
-        end_blank_row = max(len(blank_df) + start_blank_row - 1, start_blank_row)
-        current_row_tracker = end_blank_row + 2
 
     # 3. Grubbs Critical Values Table (Columns M & N)
     ws.merge_cells("M4:N4")
@@ -298,7 +264,7 @@ def generate_validation_excel(
         ws[f"B{r}"].number_format = "0.0000"
 
     # 6. Level 1 Table
-    l1_title_row = max((spiked_l2_row if has_level2 else spiked_l1_row) + 2, current_row_tracker)
+    l1_title_row = (spiked_l2_row if has_level2 else spiked_l1_row) + 2
     l1_header_row = l1_title_row + 1
     start_l1_sample_row = l1_header_row + 1
 
@@ -347,20 +313,9 @@ def generate_validation_excel(
         syx_val = extra_params.get("syx", 0.0) if isinstance(extra_params, dict) else 0.0
         lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
         loq_formula = f"=(10*{syx_val})/B{slope_row}"
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
-        lod_formula = f"=3*{noise_val}"
-        loq_formula = f"=10*{noise_val}"
-    elif lod_method == "Determination on Blank":
-        blank_mean_val = extra_params.get("blank_mean", 0.0) if isinstance(extra_params, dict) else 0.0
-        blank_sd_val = extra_params.get("blank_sd", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
-        loq_formula = f"={blank_mean_val}+(10*{blank_sd_val})"
     else:
-        manual_lod = extra_params.get("manual_lod", 0.0) if isinstance(extra_params, dict) else 0.0
-        manual_loq = extra_params.get("manual_loq", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = float(manual_lod)
-        loq_formula = float(manual_loq)
+        lod_formula = 0.0
+        loq_formula = 0.0
 
     l1_stats_labels = [
         ("Mean", f"=AVERAGE(B{start_l1_sample_row}:B{end_l1_sample_row})"),
@@ -541,9 +496,6 @@ def generate_validation_excel(
         "t-Statistic & SD (Default)": "VICH GL49(R) / USP Validation Protocol",
         "Slope & SD of Intercept (Sa)": "ICH Q2(R1) / ICH Q2(R2) Validation of Analytical Procedures",
         "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
-        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur / ICH Q2(R1)",
-        "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",
-        "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
     }
     
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
@@ -684,10 +636,10 @@ try:
         st.divider()
 
     # ==========================================
-    # 🎯 Selection of LOD & LOQ Calculation Method (أسفل جداول العينات في الواجهة)
+    # 🎯 Selection of LOD & LOQ Calculation Method
     # ==========================================
     st.subheader("🎯 LOD & LOQ Calculation Method")
-    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
+    st.info("Choose the calculation method compliant with your Validation Protocol requirements:")
 
     lod_method = st.selectbox(
         "Select Calculation Method",
@@ -695,9 +647,6 @@ try:
             "t-Statistic & SD (Default)",
             "Slope & SD of Intercept (Sa)",
             "Slope & Residual SD (Sy/x)",
-            "Signal-to-Noise Ratio (S/N)",
-            "Determination on Blank",
-            "Manual / Visual / Low Recovery",
         ],
         index=0,
         key="lod_method_select"
@@ -748,45 +697,13 @@ try:
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
 
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        extra_params["noise"] = st.number_input(
-            "Baseline Noise Level", value=1.0000, min_value=0.0001, format="%.6f", key="noise_input",
-            help="LOD will be 3 × Noise, LOQ will be 10 × Noise"
-        )
-
-    edited_blanks = None
-    if lod_method == "Determination on Blank":
-        st.subheader("🧪 Blank Samples Data Table")
-        num_blanks = st.number_input("Number of Blank Replicates", min_value=1, max_value=30, value=3, step=1, key="num_blanks_input")
-        
-        blank_data = [
-            {"Sample Name": f"Blank {i+1}", "Concentration": 0.0000} for i in range(int(num_blanks))
-        ]
-        
-        edited_blanks_raw = st.data_editor(
-            pd.DataFrame(blank_data), num_rows="dynamic", key="blanks_table_editor", use_container_width=True
-        )
-        
-        edited_blanks = edited_blanks_raw.dropna(how="all").copy() if edited_blanks_raw is not None else pd.DataFrame(blank_data)
-        if "Concentration" in edited_blanks.columns:
-            edited_blanks["Concentration"] = pd.to_numeric(edited_blanks["Concentration"], errors="coerce").fillna(0.0)
-            
-        blank_vals = edited_blanks["Concentration"].values if not edited_blanks.empty else np.array([0.0])
-        blank_mean_calc = float(np.mean(blank_vals)) if len(blank_vals) > 0 else 0.0
-        blank_sd_calc = float(np.std(blank_vals, ddof=1)) if len(blank_vals) > 1 else 0.0
-        
-        st.success(f"📊 Calculated Blank Mean: **{blank_mean_calc:.6f}** | Calculated Blank SD: **{blank_sd_calc:.6f}**")
-        
-        extra_params["blank_mean"] = blank_mean_calc
-        extra_params["blank_sd"] = blank_sd_calc
-
     st.divider()
 
     # Generate Excel Report Button
     if st.button("📥 Generate Validation Excel Report", type="primary", use_container_width=True):
         excel_bytes = generate_validation_excel(
             valid_std, edited_samples_l1, edited_samples_l2, has_level2,
-            test_name, conc_unit, target_conc_l1, target_conc_l2, std_purity, lod_method, extra_params, blank_df=edited_blanks
+            test_name, conc_unit, target_conc_l1, target_conc_l2, std_purity, lod_method, extra_params
         )
         
         file_name = f"Validation_Report_{test_name}.xlsx" if test_name else "Validation_Report.xlsx"
