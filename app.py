@@ -753,3 +753,6 @@ elif lod_method == "Determination on Blank":
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
+
+except Exception as e:
+    st.error(f"حدث خطأ غير متوقع في الواجهة: {e}")
