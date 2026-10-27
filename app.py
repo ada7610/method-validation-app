@@ -510,7 +510,7 @@ def generate_validation_excel(
         "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
         "Signal-to-Noise Ratio (S/N)": "ICH Q2(R1) Codex",
         "Determination on Blank": "AOAC Codex ",
-        "Manual / Visual / Low Recovery": "ICH Q2(R1) Codex / FDA Guidance for Industry"
+        
     }
     
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
@@ -663,7 +663,7 @@ try:
             "Slope & SD of Intercept (Sa)",
             "Slope & Residual SD (Sy/x)",
             "Determination on Blank",
-            "Manual / Visual / Low Recovery",
+           
         ],
         index=0,
         key="lod_method_select"
@@ -711,13 +711,6 @@ try:
     elif lod_method == "Slope & Residual SD (Sy/x)":
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
-
-    
-        # Dynamic formulas for LOD/LOQ (المحدثة طبقاً لإرشادات ICH Q2)
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
-        lod_formula = f"=3*{noise_val}"  # معامل 3 لـ LOD حسب ICH Q2
-        loq_formula = f"=10*{noise_val}" # معامل 10 لـ LOQ حسب ICH Q2
         
     elif lod_method == "Determination on Blank":
         col_b1, col_b2 = st.columns(2)
