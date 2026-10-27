@@ -146,7 +146,7 @@ def generate_validation_excel(
     ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 3.1 Student's t-Critical Values Table (يظهر فقط إذا كان الخيار t-Statistic & SD)
+    # 3.1 Student's t-Critical Values Table
     if lod_method == "t-Statistic & SD (Default)":
         t_table_start_row = ref_row + 3
         ws.merge_cells(f"M{t_table_start_row}:N{t_table_start_row}")
@@ -267,112 +267,4 @@ def generate_validation_excel(
     l1_header_row = l1_title_row + 1
     start_l1_sample_row = l1_header_row + 1
 
-    ws.merge_cells(f"A{l1_title_row}:E{l1_title_row}")
-    ws[f"A{l1_title_row}"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
-    ws[f"A{l1_title_row}"].font = font_bold
-    ws[f"A{l1_title_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-    ws[f"A{l1_title_row}"].alignment = align_center
-
-    headers_l1 = ["Samples name", unit_header, "Recovery %", "Outlier (Z-Score)", "Outlier Status"]
-    for c, h in zip(["A", "B", "C", "D", "E"], headers_l1):
-        ws[f"{c}{l1_header_row}"] = h
-        ws[f"{c}{l1_header_row}"].font = font_bold
-        ws[f"{c}{l1_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-        ws[f"{c}{l1_header_row}"].alignment = align_center
-
-    if level1_df is not None and not level1_df.empty:
-        for idx, row in level1_df.iterrows():
-            r = idx + start_l1_sample_row
-            ws[f"A{r}"] = str(row.get("Sample Name", ""))
-            ws[f"B{r}"] = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
-            ws[f"B{r}"].number_format = "0.0000"
-        end_l1_sample_row = max(len(level1_df) + start_l1_sample_row - 1, start_l1_sample_row)
-    else:
-        end_l1_sample_row = start_l1_sample_row
-
-    # Level 1 Statistics & Calculations
-    l1_stats_start = end_l1_sample_row + 2
-    l1_mean_row = l1_stats_start
-    l1_rec_row = l1_stats_start + 1
-    l1_sd_row = l1_stats_start + 2
-    l1_rsd_row = l1_stats_start + 3
-    l1_lod_row = l1_stats_start + 4
-    l1_loq_row = l1_stats_start + 5
-
-    # Dynamic formulas for LOD/LOQ
-    if lod_method == "t-Statistic & SD (Default)":
-        t_val_default = extra_params.get("t_val", 2.571) if isinstance(extra_params, dict) else 2.571
-        lod_formula = f"={t_val_default}*B{l1_sd_row}"
-        loq_formula = f"=10*B{l1_sd_row}"
-    elif lod_method == "Slope & SD of Intercept (Sa)":
-        sa_val = extra_params.get("sa", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = f"=(3.3*{sa_val})/B{slope_row}"
-        loq_formula = f"=(10*{sa_val})/B{slope_row}"
-    elif lod_method == "Slope & Residual SD (Sy/x)":
-        syx_val = extra_params.get("syx", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
-        loq_formula = f"=(10*{syx_val})/B{slope_row}"
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
-        lod_formula = f"=3*{noise_val}"
-        loq_formula = f"=10*{noise_val}"
-    elif lod_method == "Standard Deviation of Blanks":
-        blank_sd_val = extra_params.get("blank_sd", 0.0) if isinstance(extra_params, dict) else 0.0
-        blank_mean_val = extra_params.get("blank_mean", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
-        loq_formula = f"={blank_mean_val}+(10*{blank_sd_val})"
-    else:
-        manual_lod = extra_params.get("manual_lod", 0.0) if isinstance(extra_params, dict) else 0.0
-        manual_loq = extra_params.get("manual_loq", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = float(manual_lod)
-        loq_formula = float(manual_loq)
-
-    l1_stats_labels = [
-        ("Mean", f"=AVERAGE(B{start_l1_sample_row}:B{end_l1_sample_row})"),
-        ("Recovery %", f"=AVERAGE(C{start_l1_sample_row}:C{end_l1_sample_row})"),
-        ("Standerd Deviation", f"=STDEV(B{start_l1_sample_row}:B{end_l1_sample_row})"),
-        ("RSD %", f"=IF(B{l1_mean_row}=0, 0, (B{l1_sd_row}/B{l1_mean_row})*100)"),
-        ("LOD", lod_formula),
-        ("LOQ", loq_formula),
-    ]
-
-    for i, (label, formula) in enumerate(l1_stats_labels, start=l1_stats_start):
-        ws[f"A{i}"] = label
-        ws[f"A{i}"].font = font_bold
-        ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-        ws[f"B{i}"] = formula
-        ws[f"B{i}"].number_format = "0.0000"
-
-    for r in range(start_l1_sample_row, end_l1_sample_row + 1):
-        ws[f"C{r}"] = f"=IF(B{spiked_l1_row}=0, 0, (B{r}/B{spiked_l1_row})*100)"
-        ws[f"D{r}"] = f"=ABS(B{r}-B${l1_mean_row})/B${l1_sd_row}"
-        ws[f"E{r}"] = f'=IF(D{r}>VLOOKUP(COUNT(B${start_l1_sample_row}:B${end_l1_sample_row}), M$6:N$13, 2, FALSE), "Outlier", "Normal")'
-        ws[f"C{r}"].number_format = "0.0000"
-        ws[f"D{r}"].number_format = "0.0000"
-        ws[f"E{r}"].alignment = align_center
-
-    ws.merge_cells(f"F{start_l1_sample_row}:F{end_l1_sample_row}")
-    ws[f"F{start_l1_sample_row}"] = "Any value higher than the critical value in the table is consider outlier"
-    ws[f"F{start_l1_sample_row}"].font = Font(name="Calibri", size=9, bold=True)
-    ws[f"F{start_l1_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
-    ws[f"F{start_l1_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-    # Measurement Uncertainty for Level 1
-    unc_header_row = l1_header_row
-    unc_start_row = start_l1_sample_row
-
-    ws.merge_cells(f"H{unc_header_row}:I{unc_header_row}")
-    ws[f"H{unc_header_row}"] = "Measurment uncertainty"
-    ws[f"H{unc_header_row}"].font = font_bold
-    ws[f"H{unc_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
-    ws[f"H{unc_header_row}"].alignment = align_center
-
-    ws.merge_cells(f"H{unc_start_row}:I{unc_start_row}")
-    ws[f"H{unc_start_row}"] = "Level 1"
-    ws[f"H{unc_start_row}"].font = font_bold
-    ws[f"H{unc_start_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
-    ws[f"H{unc_start_row}"].alignment = align_center
-
-    purity_row = unc_header_row - 1
-    ws[f"H{purity_row}"] = "Standard Purity"
-    ws
+    ws.merge_cells(f"A{l1_
