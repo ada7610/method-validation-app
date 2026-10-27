@@ -503,12 +503,13 @@ def generate_validation_excel(
                 ws[f"I{r_num}"].font = font_bold
 # # 📌 Dynamic Footer References (Bottom of File)
     references_dict = {
-        "t-Statistic & SD (Default)": "ICH Q2(R1) / USP Validation Protocol",
-        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) Validation of Analytical Procedures",
+        "t-Statistic & SD (Default)": "VICH GL49(R) / USP Validation Protocol",
+        "The linearity study" : "Slope & SD of Intercept (Sa)": "ICH Q2(R1) / ICH Q2(R2) Validation of Analytical Procedures",
         "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
-        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur.",
-        "Standard Deviation of Blanks": "IUPAC Guidelines for Calibration in Analytical Chemistry",
+        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur / ICH Q2(R1)",
+        "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",  # تم تحديث المسمى والمرجع
         "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
+    }
     }
     
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
