@@ -1,4 +1,3 @@
-الكود بإضافة ال7 طرق حقت الفاليديشن 
 import io
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
