@@ -560,10 +560,66 @@ if lod_method == "t-Statistic & SD (Default)":
 elif lod_method == "Slope & SD of Intercept/Response":
     calc_lod = (3.3 * sample_sd) / slope if slope != 0 else 0
     calc_loq = (10 * sample_sd) / slope if slope != 0 else 0
-elif lod_method == "Slope & Residual SD (Sy/x)":
-    syx = extra_params.get("syx", 0.0)
-    calc_lod = (3.3 * syx) / slope if slope != 0 else 0
-    calc_loq = (10 * syx) / slope if slope != 0 else 0
+# ==========================================
+# 🎯 Selection of LOD & LOQ Calculation Method
+# ==========================================
+st.subheader("🎯 LOD & LOQ Calculation Method")
+st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
+
+lod_method = st.selectbox(
+    "Select Calculation Method",
+    options=[
+        "t-Statistic & SD (Default)",
+        "Slope & SD of Intercept/Response",
+        "Slope & Residual SD (Sy/x)",
+        "Signal-to-Noise Ratio (S/N)",
+        "Standard Deviation of Blanks",
+        "Manual / Visual / Low Recovery",
+    ],
+    index=0
+)
+
+extra_params = {}
+
+# حساب الـ Slope والـ Sy/x أوتوماتيكياً من جدول المعايرة
+calib_x = valid_std["Concentration"].values if not valid_std.empty else np.array([0.0])
+calib_y = valid_std["Area"].values if not valid_std.empty else np.array([0.0])
+
+n_calib = len(calib_x)
+if n_calib > 2 and np.sum((calib_x - np.mean(calib_x))**2) != 0:
+    # حساب الانحدار الخطي (Slope & Intercept)
+    slope, intercept = np.polyfit(calib_x, calib_y, 1)
+    # حساب القيم المتوقعة
+    y_pred = slope * calib_x + intercept
+    # حساب Residual Standard Deviation (Sy/x) أوتوماتيكياً
+    residuals = calib_y - y_pred
+    syx_auto = np.sqrt(np.sum(residuals**2) / (n_calib - 2))
+else:
+    slope = 1.0
+    syx_auto = 0.0
+
+# Dynamic UI inputs based on the selected method
+if lod_method == "Slope & Residual SD (Sy/x)":
+    st.success(f"✅ Residual SD (Sy/x) calculated automatically from Calibration data: **{syx_auto:.6f}**")
+    extra_params["syx"] = syx_auto
+
+elif lod_method == "Signal-to-Noise Ratio (S/N)":
+    extra_params["noise"] = st.number_input(
+        "Baseline Noise Level", value=1.0000, min_value=0.0001, format="%.6f",
+        help="LOD will be 3 × Noise, LOQ will be 10 × Noise"
+    )
+elif lod_method == "Standard Deviation of Blanks":
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
+        extra_params["blank_mean"] = st.number_input("Mean of Blank Samples", value=0.0000, format="%.6f")
+    with col_b2:
+        extra_params["blank_sd"] = st.number_input("Standard Deviation of Blanks (s_blank)", value=0.0000, min_value=0.0, format="%.6f")
+elif lod_method == "Manual / Visual / Low Recovery":
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        extra_params["manual_lod"] = st.number_input("Manual / Visual LOD Value", value=0.0000, min_value=0.0, format="%.6f")
+    with col_m2:
+        extra_params["manual_loq"] = st.number_input("Manual / Visual LOQ Value", value=0.0000, min_value=0.0, format="%.6f")
 elif lod_method == "Signal-to-Noise Ratio (S/N)":
     noise = extra_params.get("noise", 1.0)
     calc_lod = 3 * noise
