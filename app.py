@@ -181,65 +181,68 @@ def generate_validation_excel(
     ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     # 4. Scatter Chart
-    chart = ScatterChart()
-    chart.title = None
-
-    chart.x_axis.title = None
-    chart.y_axis.title = None
-
-    chart.x_axis.delete = False
-    chart.y_axis.delete = False
-    chart.x_axis.crosses = "autoZero"
-    chart.y_axis.crosses = "autoZero"
-    chart.x_axis.tickLblPos = "nextTo"
-    chart.y_axis.tickLblPos = "nextTo"
-
-    chart.x_axis.number_format = "0.00"
-    chart.y_axis.number_format = "0.00"
-
-    chart.graphicalProperties = GraphicalProperties()
-    chart.graphicalProperties.noFill = True
-
-    chart.plot_area.graphicalProperties = GraphicalProperties()
-    chart.plot_area.graphicalProperties.noFill = True
-
-    chart.x_axis.majorGridlines = ChartLines()
-    chart.x_axis.majorGridlines.graphicalProperties = GraphicalProperties()
-    chart.x_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
-
-    chart.y_axis.majorGridlines = ChartLines()
-    chart.y_axis.majorGridlines.graphicalProperties = GraphicalProperties()
-    chart.y_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
-
-    xvalues = Reference(ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row)
-    yvalues = Reference(ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row)
-
-    series = Series(yvalues, xvalues, title_from_data=False)
-    series.marker.symbol = "circle"
-    series.marker.size = 6
-    series.graphicalProperties.line.noFill = True
-
-    series.dataLabels = DataLabelList()
-    series.dataLabels.showVal = False
-    series.dataLabels.showCatName = False
-    series.dataLabels.showSerName = False
-
-    trendline = openpyxl.chart.trendline.Trendline(
-        trendlineType="linear", dispEq=True, dispRSqr=True
-    )
     try:
-        trendline.graphicalProperties = GraphicalProperties()
-        trendline.graphicalProperties.line = LineProperties(prstDash="sysDot", cmpd="sng")
+        chart = ScatterChart()
+        chart.title = None
+
+        chart.x_axis.title = None
+        chart.y_axis.title = None
+
+        chart.x_axis.delete = False
+        chart.y_axis.delete = False
+        chart.x_axis.crosses = "autoZero"
+        chart.y_axis.crosses = "autoZero"
+        chart.x_axis.tickLblPos = "nextTo"
+        chart.y_axis.tickLblPos = "nextTo"
+
+        chart.x_axis.number_format = "0.00"
+        chart.y_axis.number_format = "0.00"
+
+        chart.graphicalProperties = GraphicalProperties()
+        chart.graphicalProperties.noFill = True
+
+        chart.plot_area.graphicalProperties = GraphicalProperties()
+        chart.plot_area.graphicalProperties.noFill = True
+
+        chart.x_axis.majorGridlines = ChartLines()
+        chart.x_axis.majorGridlines.graphicalProperties = GraphicalProperties()
+        chart.x_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
+
+        chart.y_axis.majorGridlines = ChartLines()
+        chart.y_axis.majorGridlines.graphicalProperties = GraphicalProperties()
+        chart.y_axis.majorGridlines.graphicalProperties.line = LineProperties(solidFill="D9D9D9")
+
+        xvalues = Reference(ws, min_col=2, min_row=start_cal_row, max_row=end_cal_row)
+        yvalues = Reference(ws, min_col=3, min_row=start_cal_row, max_row=end_cal_row)
+
+        series = Series(yvalues, xvalues, title_from_data=False)
+        series.marker.symbol = "circle"
+        series.marker.size = 6
+        series.graphicalProperties.line.noFill = True
+
+        series.dataLabels = DataLabelList()
+        series.dataLabels.showVal = False
+        series.dataLabels.showCatName = False
+        series.dataLabels.showSerName = False
+
+        trendline = openpyxl.chart.trendline.Trendline(
+            trendlineType="linear", dispEq=True, dispRSqr=True
+        )
+        try:
+            trendline.graphicalProperties = GraphicalProperties()
+            trendline.graphicalProperties.line = LineProperties(prstDash="sysDot", cmpd="sng")
+        except Exception:
+            pass
+
+        series.trendline = trendline
+        chart.series.append(series)
+        chart.legend = None
+        
+        chart.width = 13
+        chart.height = 7
+        ws.add_chart(chart, "F3")
     except Exception:
         pass
-
-    series.trendline = trendline
-    chart.series.append(series)
-    chart.legend = None
-    
-    chart.width = 13
-    chart.height = 7
-    ws.add_chart(chart, "F3")
 
     # 5. Calibration Regression Values & Parameters
     rsq_row = end_cal_row + 2
@@ -254,4 +257,67 @@ def generate_validation_excel(
     ws[f"B{slope_row}"] = f"=SLOPE(C{start_cal_row}:C{end_cal_row}, B{start_cal_row}:B{end_cal_row})"
 
     ws[f"A{tval_row}"] = "t-value (t test)"
-    ws
+    ws[f"B{tval_row}"] = float(t_val)
+
+    ws[f"A{spiked_row}"] = "Spiked Level"
+    ws[f"B{spiked_row}"] = float(target_conc)
+
+    for r in [rsq_row, slope_row, tval_row, spiked_row]:
+        ws[f"A{r}"].font = font_bold
+        ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"A{r}"].alignment = align_left
+
+        ws[f"B{r}"].font = font_bold
+        ws[f"B{r}"].fill = PatternFill(fill_type=None)
+        ws[f"B{r}"].alignment = align_center
+        ws[f"B{r}"].number_format = "0.0000"
+
+    # 6. Level 1 Table
+    l1_title_row = spiked_row + 3
+    l1_header_row = l1_title_row + 1
+    start_sample_row = l1_header_row + 1
+
+    ws.merge_cells(f"A{l1_title_row}:E{l1_title_row}")
+    ws[f"A{l1_title_row}"] = f"Level 1 ({unit_str})" if unit_str else "Level 1"
+    ws[f"A{l1_title_row}"].font = font_bold
+    ws[f"A{l1_title_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+    ws[f"A{l1_title_row}"].alignment = align_center
+
+    headers_l1 = ["Samples name", unit_header, "Recovery %", "Outlier (Z-Score)", "Outlier Status"]
+    cols_l1 = ["A", "B", "C", "D", "E"]
+    for c, h in zip(cols_l1, headers_l1):
+        ws[f"{c}{l1_header_row}"] = h
+        ws[f"{c}{l1_header_row}"].font = font_bold
+        ws[f"{c}{l1_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+        ws[f"{c}{l1_header_row}"].alignment = align_center
+
+    for idx, row in level1_df.iterrows():
+        r = idx + start_sample_row
+        ws[f"A{r}"] = str(row.get("Sample Name", ""))
+        sample_conc = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
+        ws[f"B{r}"] = sample_conc
+        ws[f"B{r}"].number_format = "0.0000"
+
+    end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
+
+    # 7. Statistics & Calculations (Including dynamic LOD & LOQ methods)
+    stats_start_row = end_sample_row + 2
+    mean_row = stats_start_row
+    rec_row = stats_start_row + 1
+    sd_row = stats_start_row + 2
+    rsd_row = stats_start_row + 3
+    method_info_row = stats_start_row + 4
+    lod_row = stats_start_row + 5
+    loq_row = stats_start_row + 6
+
+    # Dynamic formula selection based on LOD/LOQ method
+    if lod_method == "t-Statistic & SD (Default)":
+        lod_formula = f"=B{tval_row}*B{sd_row}"
+        loq_formula = f"=10*B{sd_row}"
+    elif lod_method == "Slope & SD of Intercept/Response":
+        lod_formula = f"=(3.3*B{sd_row})/B{slope_row}"
+        loq_formula = f"=(10*B{sd_row})/B{slope_row}"
+    elif lod_method == "Slope & Residual SD (Sy/x)":
+        syx_val = extra_params.get("syx", 0.0)
+        lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
+        loq_formula = f"=(
