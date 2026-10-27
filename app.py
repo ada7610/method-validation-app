@@ -1,4 +1,3 @@
-التحديث الأخير للكود بإضافة 2 ليفل 
 import io
 import streamlit as st
 
