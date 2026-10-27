@@ -275,4 +275,47 @@ def generate_validation_excel(
     for idx, row in level1_df.iterrows():
         r = idx + start_sample_row
         ws[f"A{r}"] = str(row.get("Sample Name", ""))
-        ws[f"B{r}"] = float(row.get("Concentration", 0)) if pd.notnull(row.get("
+        ws[f"B{r}"] = float(row.get("Concentration", 0)) if pd.notnull(row.get("Concentration")) else 0.0
+        ws[f"B{r}"].number_format = "0.0000"
+
+    end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
+
+    # 7. Statistics & Calculations
+    stats_start_row = end_sample_row + 2
+    mean_row = stats_start_row
+    rec_row = stats_start_row + 1
+    sd_row = stats_start_row + 2
+    rsd_row = stats_start_row + 3
+    lod_row = stats_start_row + 4
+    loq_row = stats_start_row + 5
+
+    # Dynamic formulas for LOD/LOQ
+    if lod_method == "t-Statistic & SD (Default)":
+        lod_formula = f"=B{tval_row}*B{sd_row}"
+        loq_formula = f"=10*B{sd_row}"
+    elif lod_method == "Slope & SD of Intercept (Sa)":
+        sa_val = extra_params.get("sa", 0.0)
+        lod_formula = f"=(3.3*{sa_val})/B{slope_row}"
+        loq_formula = f"=(10*{sa_val})/B{slope_row}"
+    elif lod_method == "Slope & Residual SD (Sy/x)":
+        syx_val = extra_params.get("syx", 0.0)
+        lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
+        loq_formula = f"=(10*{syx_val})/B{slope_row}"
+    elif lod_method == "Signal-to-Noise Ratio (S/N)":
+        noise_val = extra_params.get("noise", 1.0)
+        lod_formula = f"=3*{noise_val}"
+        loq_formula = f"=10*{noise_val}"
+    elif lod_method == "Standard Deviation of Blanks":
+        blank_sd_val = extra_params.get("blank_sd", 0.0)
+        blank_mean_val = extra_params.get("blank_mean", 0.0)
+        lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
+        loq_formula = f"={blank_mean_val}+(10*{blank_sd_val})"
+    else:
+        manual_lod = extra_params.get("manual_lod", 0.0)
+        manual_loq = extra_params.get("manual_loq", 0.0)
+        lod_formula = float(manual_lod)
+        loq_formula = float(manual_loq)
+
+    stats_labels = [
+        ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
+        ("Recovery %", f
