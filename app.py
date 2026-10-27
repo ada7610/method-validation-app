@@ -650,8 +650,8 @@ try:
 
         st.divider()
 
-    # ==========================================
-    # 🎯 Selection of LOD & LOQ Calculation Method (تم نقله ليصبح أسفل جداول العينات)
+   # ==========================================
+    # 🎯 Selection of LOD & LOQ Calculation Method
     # ==========================================
     st.subheader("🎯 LOD & LOQ Calculation Method")
     st.info("Choose the calculation method compliant with your Validation Protocol requirements:")
@@ -663,7 +663,6 @@ try:
             "Slope & SD of Intercept (Sa)",
             "Slope & Residual SD (Sy/x)",
             "Determination on Blank",
-           
         ],
         index=0,
         key="lod_method_select"
@@ -711,8 +710,8 @@ try:
     elif lod_method == "Slope & Residual SD (Sy/x)":
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
-        
-elif lod_method == "Determination on Blank":
+
+    elif lod_method == "Determination on Blank":
         st.subheader("🧪 Blank Samples Data Table")
         num_blanks = st.number_input("Number of Blank Replicates", min_value=1, max_value=30, value=3, step=1, key="num_blanks_input")
         
