@@ -506,7 +506,7 @@ def generate_validation_excel(
     # 📌 Dynamic Footer References (Bottom of File)
     references_dict = {
         "t-Statistic & SD (Default)": "VICH GL49(R) / USP Validation Protocol",
-        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) / ICH Q2(R2) Validation of Analytical Procedures",
+        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) ",
         "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
         "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur.",
         "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",
