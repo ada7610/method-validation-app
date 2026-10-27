@@ -506,11 +506,11 @@ def generate_validation_excel(
     # 📌 Dynamic Footer References (Bottom of File)
     references_dict = {
         "t-Statistic & SD (Default)": "VICH GL49(R) / USP Validation Protocol",
-        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) ",
+        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) Codex ",
         "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
-        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur.",
-        "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",
-        "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
+        "Signal-to-Noise Ratio (S/N)": "ICH Q2(R1) Codex",
+        "Determination on Blank": "AOAC Codex ",
+        "Manual / Visual / Low Recovery": "ICH Q2(R1) Codex / FDA Guidance for Industry"
     }
     
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
@@ -713,11 +713,12 @@ try:
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
 
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        extra_params["noise"] = st.number_input(
-            "Baseline Noise Level", value=1.0000, min_value=0.0001, format="%.6f", key="noise_input",
-            help="LOD will be 3 × Noise, LOQ will be 10 × Noise"
-        )
+    
+        elif lod_method == "Signal-to-Noise Ratio (S/N)":
+        noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
+        lod_formula = f"=3*{noise_val}"  # معامل 3 لـ LOD حسب ICH Q2
+        loq_formula = f"=10*{noise_val}" # معامل 10 لـ LOQ حسب ICH Q2)
+        
     elif lod_method == "Determination on Blank":
         col_b1, col_b2 = st.columns(2)
         with col_b1:
