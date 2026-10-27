@@ -712,7 +712,7 @@ try:
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
         
- elif lod_method == "Determination on Blank":
+elif lod_method == "Determination on Blank":
         st.subheader("🧪 Blank Samples Data Table")
         num_blanks = st.number_input("Number of Blank Replicates", min_value=1, max_value=30, value=3, step=1, key="num_blanks_input")
         
@@ -739,7 +739,6 @@ try:
 
     st.divider()
 
-    # Generate Excel Report Button
     if st.button("📥 Generate Validation Excel Report", type="primary", use_container_width=True):
         excel_bytes = generate_validation_excel(
             valid_std, edited_samples_l1, edited_samples_l2, has_level2,
@@ -754,6 +753,3 @@ try:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-
-except Exception as e:
-    st.error(f"حدث خطأ غير متوقع في الواجهة: {e}")
