@@ -1,4 +1,15 @@
 import io
+import streamlit as st
+
+# ==========================================
+# 🎨 Page & Sidebar Configuration (MUST BE FIRST)
+# ==========================================
+st.set_page_config(
+    page_title="Method Validation System | Abdulrahman Alamri",
+    page_icon="🧪",
+    layout="wide",
+)
+
 import openpyxl
 from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.chart.axis import ChartLines
@@ -8,16 +19,6 @@ from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import numpy as np
-import streamlit as st
-
-# ==========================================
-# 🎨 Page & Sidebar Configuration
-# ==========================================
-st.set_page_config(
-    page_title="Method Validation System | Abdulrahman Alamri",
-    page_icon="🧪",
-    layout="wide",
-)
 
 with st.sidebar:
     st.header("👑 Developer Info")
@@ -138,7 +139,7 @@ def generate_validation_excel(
     ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 3.1 Student's t-Critical Values Table (يظهر فقط إذا كان الخيار t-Statistic & SD)
+    # 3.1 Student's t-Critical Values Table
     last_t_row = ref_row
     if lod_method == "t-Statistic & SD (Default)":
         t_table_start_row = ref_row + 3
@@ -283,7 +284,7 @@ def generate_validation_excel(
     sd_row = stats_start_row + 2
     rsd_row = stats_start_row + 3
 
-    # Dynamic formulas for LOD/LOQ (Safe extraction)
+    # Dynamic formulas for LOD/LOQ
     if lod_method == "t-Statistic & SD (Default)":
         t_val_default = extra_params.get("t_val", 2.571) if isinstance(extra_params, dict) else 2.571
         lod_formula = f"={t_val_default}*B{sd_row}"
@@ -295,32 +296,3 @@ def generate_validation_excel(
     elif lod_method == "Slope & Residual SD (Sy/x)":
         syx_val = extra_params.get("syx", 0.0) if isinstance(extra_params, dict) else 0.0
         lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
-        loq_formula = f"=(10*{syx_val})/B{slope_row}"
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
-        lod_formula = f"=3*{noise_val}"
-        loq_formula = f"=10*{noise_val}"
-    elif lod_method == "Standard Deviation of Blanks":
-        blank_sd_val = extra_params.get("blank_sd", 0.0) if isinstance(extra_params, dict) else 0.0
-        blank_mean_val = extra_params.get("blank_mean", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
-        loq_formula = f"={blank_mean_val}+(10*{blank_sd_val})"
-    else:
-        manual_lod = extra_params.get("manual_lod", 0.0) if isinstance(extra_params, dict) else 0.0
-        manual_loq = extra_params.get("manual_loq", 0.0) if isinstance(extra_params, dict) else 0.0
-        lod_formula = float(manual_lod)
-        loq_formula = float(manual_loq)
-
-    stats_labels = [
-        ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
-        ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
-        ("Standerd Deviation", f"=STDEV(B{start_sample_row}:B{end_sample_row})"),
-        ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
-        ("LOD", lod_formula),
-        ("LOQ", loq_formula),
-    ]
-
-    for i, (label, formula) in enumerate(stats_labels, start=stats_start_row):
-        ws[f"A{i}"] = label
-        ws[f"A{i}"].font = font_bold
-        ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
