@@ -737,9 +737,9 @@ try:
         
         extra_params["blank_mean"] = blank_mean_calc
         extra_params["blank_sd"] = blank_sd_calc
-        # 📌 حسابات وعرض جدول Determination on Blank في ملف الإكسل (إذا تم اختيار هذه الطريقة)
+     # 📌 حسابات وعرض جدول Determination on Blank في ملف الإكسل (بعد جدول الكاليبريشن مباشرة)
     if lod_method == "Determination on Blank":
-        blank_title_row = end_cal_row + 5
+        blank_title_row = start_cal_row + (len(calib_df) if calib_df is not None and not calib_df.empty else 6) + 3
         blank_header_row = blank_title_row + 1
         start_blank_sample_row = blank_header_row + 1
         
@@ -755,9 +755,6 @@ try:
             ws[f"{col_char}{blank_header_row}"].font = font_bold
             ws[f"{col_char}{blank_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
             ws[f"{col_char}{blank_header_row}"].alignment = align_center
-            
-        # (يمكنك تمرير بيانات البلانك عبر extra_params أو من DataFrame خاص بها لتعبئة الصفوف هنا بدقة)
-
     st.divider()
 
     # Generate Excel Report Button
