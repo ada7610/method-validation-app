@@ -500,10 +500,13 @@ def generate_validation_excel(
             if u_name in ["u combiend", "U expanded", "U%"]:
                 ws[f"H{r_num}"].font = font_bold
                 ws[f"I{r_num}"].font = font_bold
-# تحديد السطر الأخير بدقة (نازل خانتين عن آخر جدول)
-    final_row = (l2_unc_start + len(level2_df) + 3) if (has_level2 and level2_df is not None and not level2_df.empty) else (uPct_row + 3)
+# العثور على أبعد سطر تم استخدام فيه بيانات أو جداول في كامل الشيت
+    max_used_row = ws.max_row
 
-    # دمج الخلايا من B إلى F (أو حسب رغبتك) وتنسيق سطر المرجع الأخضر مثل الصورة
+    # جعل السطر الجديد ينزل خانتين (سطرين فارغين) تحت أسفل نقطة في الملف
+    final_row = max_used_row + 3
+
+    # دمج الخلايا من B إلى F وتنسيق سطر المرجع الأخضر في أسفل الملف تماماً
     ws.merge_cells(f"B{final_row}:F{final_row}")
     ws[f"B{final_row}"] = f"Method: {lod_method} | Ref: ICH Q2 (R1) / USP Validation Protocol"
     ws[f"B{final_row}"].font = Font(name="Calibri", size=10, italic=True, bold=True, color="000000")
