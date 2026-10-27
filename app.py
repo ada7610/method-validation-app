@@ -712,7 +712,7 @@ try:
         st.success(f"✅ Residual SD (Sy/x) calculated automatically: **{syx_auto:.6f}**")
         extra_params["syx"] = syx_auto
         
-  elif lod_method == "Determination on Blank":
+ elif lod_method == "Determination on Blank":
         st.subheader("🧪 Blank Samples Data Table")
         num_blanks = st.number_input("Number of Blank Replicates", min_value=1, max_value=30, value=3, step=1, key="num_blanks_input")
         
@@ -736,6 +736,8 @@ try:
         
         extra_params["blank_mean"] = blank_mean_calc
         extra_params["blank_sd"] = blank_sd_calc
+
+    st.divider()
 
     # Generate Excel Report Button
     if st.button("📥 Generate Validation Excel Report", type="primary", use_container_width=True):
