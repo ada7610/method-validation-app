@@ -714,10 +714,11 @@ try:
         extra_params["syx"] = syx_auto
 
     
-        elif lod_method == "Signal-to-Noise Ratio (S/N)":
+        # Dynamic formulas for LOD/LOQ (المحدثة طبقاً لإرشادات ICH Q2)
+    elif lod_method == "Signal-to-Noise Ratio (S/N)":
         noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
         lod_formula = f"=3*{noise_val}"  # معامل 3 لـ LOD حسب ICH Q2
-        loq_formula = f"=10*{noise_val}" # معامل 10 لـ LOQ حسب ICH Q2)
+        loq_formula = f"=10*{noise_val}" # معامل 10 لـ LOQ حسب ICH Q2
         
     elif lod_method == "Determination on Blank":
         col_b1, col_b2 = st.columns(2)
