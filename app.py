@@ -737,6 +737,26 @@ try:
         
         extra_params["blank_mean"] = blank_mean_calc
         extra_params["blank_sd"] = blank_sd_calc
+        # 📌 حسابات وعرض جدول Determination on Blank في ملف الإكسل (إذا تم اختيار هذه الطريقة)
+    if lod_method == "Determination on Blank":
+        blank_title_row = end_cal_row + 5
+        blank_header_row = blank_title_row + 1
+        start_blank_sample_row = blank_header_row + 1
+        
+        ws.merge_cells(f"A{blank_title_row}:B{blank_title_row}")
+        ws[f"A{blank_title_row}"] = "Determination on Blank"
+        ws[f"A{blank_title_row}"].font = font_bold
+        ws[f"A{blank_title_row}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
+        ws[f"A{blank_title_row}"].alignment = align_center
+        
+        ws[f"A{blank_header_row}"] = "Blank Sample"
+        ws[f"B{blank_header_row}"] = unit_header
+        for col_char in ["A", "B"]:
+            ws[f"{col_char}{blank_header_row}"].font = font_bold
+            ws[f"{col_char}{blank_header_row}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
+            ws[f"{col_char}{blank_header_row}"].alignment = align_center
+            
+        # (يمكنك تمرير بيانات البلانك عبر extra_params أو من DataFrame خاص بها لتعبئة الصفوف هنا بدقة)
 
     st.divider()
 
