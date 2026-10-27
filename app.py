@@ -1,3 +1,4 @@
+
 import io
 import streamlit as st
 
@@ -500,33 +501,7 @@ def generate_validation_excel(
             if u_name in ["u combiend", "U expanded", "U%"]:
                 ws[f"H{r_num}"].font = font_bold
                 ws[f"I{r_num}"].font = font_bold
-# العثور على أبعد سطر تم استخدام فيه بيانات أو جداول في كامل الشيت
-    max_used_row = ws.max_row
-
-    # جعل السطر الجديد ينزل خانتين (سطرين فارغين) تحت أسفل نقطة في الملف
-    final_row = max_used_row + 3
-
-    # دمج الخلايا من B إلى F وتنسيق سطر المرجع الأخضر في أسفل الملف تماماً
-    ws.merge_cells(f"B{final_row}:F{final_row}")
-    ws[f"B{final_row}"] = f"Method: {lod_method} | Ref: ICH Q2 (R1) / USP Validation Protocol"
-    ws[f"B{final_row}"].font = Font(name="Calibri", size=10, italic=True, bold=True, color="000000")
-    ws[f"B{final_row}"].fill = PatternFill("solid", fgColor="C6EFCE")
-    ws[f"B{final_row}"].alignment = Alignment(horizontal="center", vertical="center")
-    
-    # إضافة حدود خفيفة للخلية المدمجة لتبدو مرتبة
-    for col_char in ["B", "C", "D", "E", "F"]:
-        ws[f"{col_char}{final_row}"].border = thin_border
-        # 📌 Dynamic Footer References (Bottom of File)
-    references_dict = {
-        "t-Statistic & SD (Default)": "ICH Q2(R1) / USP Validation Protocol",
-        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) Validation of Analytical Procedures",
-        "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
-        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur.",
-        "Standard Deviation of Blanks": "IUPAC Guidelines for Calibration in Analytical Chemistry",
-        "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
-    }
-    
-    # 📌 Dynamic Footer References (Bottom of File)
+# # 📌 Dynamic Footer References (Bottom of File)
     references_dict = {
         "t-Statistic & SD (Default)": "ICH Q2(R1) / USP Validation Protocol",
         "Slope & SD of Intercept (Sa)": "ICH Q2(R1) Validation of Analytical Procedures",
@@ -551,7 +526,8 @@ def generate_validation_excel(
     
     # إضافة حدود خفيفة للخلية المدمجة لتبدو مرتبة
     for col_char in ["B", "C", "D", "E", "F"]:
-        ws[f"{col_char}{final_row}"].border = thin_border    column_widths = {
+        ws[f"{col_char}{final_row}"].border = thin_border
+    column_widths = {
         "A": 26, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
     }
