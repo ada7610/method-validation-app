@@ -37,7 +37,8 @@ with st.sidebar:
 # 📊 Excel Generation Function
 # ==========================================
 def generate_validation_excel(
-    calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity
+    calib_df, level1_df, test_title, unit_str, target_conc, t_val, std_purity,
+    lod_method, extra_params
 ):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -240,13 +241,17 @@ def generate_validation_excel(
     chart.height = 7
     ws.add_chart(chart, "F3")
 
-    # 5. RSQ, t-value, Spiked Level
+    # 5. Calibration Regression Values & Parameters
     rsq_row = end_cal_row + 2
-    tval_row = rsq_row + 1
+    slope_row = rsq_row + 1
+    tval_row = slope_row + 1
     spiked_row = tval_row + 1
 
-    ws[f"A{rsq_row}"] = "RSQ"
+    ws[f"A{rsq_row}"] = "RSQ (R²)"
     ws[f"B{rsq_row}"] = f"=RSQ(C{start_cal_row}:C{end_cal_row}, B{start_cal_row}:B{end_cal_row})"
+
+    ws[f"A{slope_row}"] = "Slope (S)"
+    ws[f"B{slope_row}"] = f"=SLOPE(C{start_cal_row}:C{end_cal_row}, B{start_cal_row}:B{end_cal_row})"
 
     ws[f"A{tval_row}"] = "t-value (t test)"
     ws[f"B{tval_row}"] = float(t_val)
@@ -254,7 +259,7 @@ def generate_validation_excel(
     ws[f"A{spiked_row}"] = "Spiked Level"
     ws[f"B{spiked_row}"] = float(target_conc)
 
-    for r in [rsq_row, tval_row, spiked_row]:
+    for r in [rsq_row, slope_row, tval_row, spiked_row]:
         ws[f"A{r}"].font = font_bold
         ws[f"A{r}"].fill = PatternFill("solid", fgColor=COLOR_ORANGE_HEADER)
         ws[f"A{r}"].alignment = align_left
@@ -264,8 +269,8 @@ def generate_validation_excel(
         ws[f"B{r}"].alignment = align_center
         ws[f"B{r}"].number_format = "0.0000"
 
-    # 6. Level 1 Table (نزلت 3 صفوف إضافية)
-    l1_title_row = spiked_row + 5
+    # 6. Level 1 Table
+    l1_title_row = spiked_row + 3
     l1_header_row = l1_title_row + 1
     start_sample_row = l1_header_row + 1
 
@@ -292,20 +297,50 @@ def generate_validation_excel(
 
     end_sample_row = max(len(level1_df) + start_sample_row - 1, start_sample_row)
 
-    # 7. Statistics & Calculations
+    # 7. Statistics & Calculations (Including dynamic LOD & LOQ methods)
     stats_start_row = end_sample_row + 2
     mean_row = stats_start_row
     rec_row = stats_start_row + 1
     sd_row = stats_start_row + 2
     rsd_row = stats_start_row + 3
+    method_info_row = stats_start_row + 4
+    lod_row = stats_start_row + 5
+    loq_row = stats_start_row + 6
+
+    # Dynamic formula selection based on LOD/LOQ method
+    if lod_method == "t-Statistic & SD (Default)":
+        lod_formula = f"=B{tval_row}*B{sd_row}"
+        loq_formula = f"=10*B{sd_row}"
+    elif lod_method == "Slope & SD of Intercept/Response":
+        lod_formula = f"=(3.3*B{sd_row})/B{slope_row}"
+        loq_formula = f"=(10*B{sd_row})/B{slope_row}"
+    elif lod_method == "Slope & Residual SD (Sy/x)":
+        syx_val = extra_params.get("syx", 0.0)
+        lod_formula = f"=(3.3*{syx_val})/B{slope_row}"
+        loq_formula = f"=(10*{syx_val})/B{slope_row}"
+    elif lod_method == "Signal-to-Noise Ratio (S/N)":
+        noise_val = extra_params.get("noise", 1.0)
+        lod_formula = f"=3*{noise_val}"
+        loq_formula = f"=10*{noise_val}"
+    elif lod_method == "Standard Deviation of Blanks":
+        blank_sd_val = extra_params.get("blank_sd", 0.0)
+        blank_mean_val = extra_params.get("blank_mean", 0.0)
+        lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
+        loq_formula = f"={blank_mean_val}+(10*{blank_sd_val})"
+    else:  # Manual / Visual / Low Recovery
+        manual_lod = extra_params.get("manual_lod", 0.0)
+        manual_loq = extra_params.get("manual_loq", 0.0)
+        lod_formula = float(manual_lod)
+        loq_formula = float(manual_loq)
 
     stats_labels = [
         ("Mean", f"=AVERAGE(B{start_sample_row}:B{end_sample_row})"),
         ("Recovery %", f"=AVERAGE(C{start_sample_row}:C{end_sample_row})"),
         ("Standerd Deviation", f"=STDEV(B{start_sample_row}:B{end_sample_row})"),
         ("RSD %", f"=IF(B{mean_row}=0, 0, (B{sd_row}/B{mean_row})*100)"),
-        ("LOD", f"=B{tval_row}*B{sd_row}"),
-        ("LOQ", f"=10*B{sd_row}"),
+        ("LOD / LOQ Method", str(lod_method)),
+        ("LOD", lod_formula),
+        ("LOQ", loq_formula),
     ]
 
     for i, (label, formula) in enumerate(stats_labels, start=stats_start_row):
@@ -313,7 +348,8 @@ def generate_validation_excel(
         ws[f"A{i}"].font = font_bold
         ws[f"A{i}"].fill = PatternFill("solid", fgColor=COLOR_BLUE_HEADER)
         ws[f"B{i}"] = formula
-        ws[f"B{i}"].number_format = "0.0000"
+        if label not in ["LOD / LOQ Method"]:
+            ws[f"B{i}"].number_format = "0.0000"
 
     for r in range(start_sample_row, end_sample_row + 1):
         ws[f"C{r}"] = f"=IF(B{spiked_row}=0, 0, (B{r}/B{spiked_row})*100)"
@@ -330,7 +366,7 @@ def generate_validation_excel(
     ws[f"F{start_sample_row}"].fill = PatternFill("solid", fgColor=COLOR_GRAY_NOTE)
     ws[f"F{start_sample_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    # 8. Measurement Uncertainty Table & Standard Purity (نزلت 3 صفوف إضافية)
+    # 8. Measurement Uncertainty Table & Standard Purity
     unc_header_row = l1_header_row
     unc_start_row = start_sample_row
 
@@ -380,7 +416,7 @@ def generate_validation_excel(
             ws[f"I{r_num}"].font = font_bold
 
     column_widths = {
-        "A": 22, "B": 24, "C": 18, "D": 18, "E": 18,
+        "A": 26, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
     }
     for col_letter, width in column_widths.items():
@@ -462,6 +498,91 @@ if "Concentration" in edited_samples.columns:
 
 st.divider()
 
+# ==========================================
+# 🎯 Selection of LOD & LOQ Calculation Method
+# ==========================================
+st.subheader("🎯 LOD & LOQ Calculation Method")
+st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
+
+lod_method = st.selectbox(
+    "Select Calculation Method",
+    options=[
+        "t-Statistic & SD (Default)",
+        "Slope & SD of Intercept/Response",
+        "Slope & Residual SD (Sy/x)",
+        "Signal-to-Noise Ratio (S/N)",
+        "Standard Deviation of Blanks",
+        "Manual / Visual / Low Recovery",
+    ],
+    index=0
+)
+
+extra_params = {}
+
+# Dynamic UI inputs based on the selected method
+if lod_method == "Slope & Residual SD (Sy/x)":
+    extra_params["syx"] = st.number_input(
+        "Residual Standard Deviation (Sy/x)", value=0.0000, min_value=0.0, format="%.6f"
+    )
+elif lod_method == "Signal-to-Noise Ratio (S/N)":
+    extra_params["noise"] = st.number_input(
+        "Baseline Noise Level", value=1.0000, min_value=0.0001, format="%.6f",
+        help="LOD will be 3 × Noise, LOQ will be 10 × Noise"
+    )
+elif lod_method == "Standard Deviation of Blanks":
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
+        extra_params["blank_mean"] = st.number_input("Mean of Blank Samples", value=0.0000, format="%.6f")
+    with col_b2:
+        extra_params["blank_sd"] = st.number_input("Standard Deviation of Blanks (s_blank)", value=0.0000, min_value=0.0, format="%.6f")
+elif lod_method == "Manual / Visual / Low Recovery":
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        extra_params["manual_lod"] = st.number_input("Manual / Visual LOD Value", value=0.0000, min_value=0.0, format="%.6f")
+    with col_m2:
+        extra_params["manual_loq"] = st.number_input("Manual / Visual LOQ Value", value=0.0000, min_value=0.0, format="%.6f")
+
+# Calculate & Preview LOD/LOQ live in Streamlit UI
+sample_concs = edited_samples["Concentration"].values if not edited_samples.empty else np.array([0.0])
+sample_sd = np.std(sample_concs, ddof=1) if len(sample_concs) > 1 else 0.0
+
+calib_x = valid_std["Concentration"].values if not valid_std.empty else np.array([0.0])
+calib_y = valid_std["Area"].values if not valid_std.empty else np.array([0.0])
+
+if len(calib_x) > 1 and np.sum((calib_x - np.mean(calib_x))**2) != 0:
+    slope = np.polyfit(calib_x, calib_y, 1)[0]
+else:
+    slope = 1.0
+
+if lod_method == "t-Statistic & SD (Default)":
+    calc_lod = t_val * sample_sd
+    calc_loq = 10 * sample_sd
+elif lod_method == "Slope & SD of Intercept/Response":
+    calc_lod = (3.3 * sample_sd) / slope if slope != 0 else 0
+    calc_loq = (10 * sample_sd) / slope if slope != 0 else 0
+elif lod_method == "Slope & Residual SD (Sy/x)":
+    syx = extra_params.get("syx", 0.0)
+    calc_lod = (3.3 * syx) / slope if slope != 0 else 0
+    calc_loq = (10 * syx) / slope if slope != 0 else 0
+elif lod_method == "Signal-to-Noise Ratio (S/N)":
+    noise = extra_params.get("noise", 1.0)
+    calc_lod = 3 * noise
+    calc_loq = 10 * noise
+elif lod_method == "Standard Deviation of Blanks":
+    calc_lod = extra_params.get("blank_mean", 0.0) + (3 * extra_params.get("blank_sd", 0.0))
+    calc_loq = extra_params.get("blank_mean", 0.0) + (10 * extra_params.get("blank_sd", 0.0))
+else:
+    calc_lod = extra_params.get("manual_lod", 0.0)
+    calc_loq = extra_params.get("manual_loq", 0.0)
+
+col_lod, col_loq = st.columns(2)
+with col_lod:
+    st.metric(label=f"Calculated LOD ({conc_unit})", value=f"{calc_lod:.6f}")
+with col_loq:
+    st.metric(label=f"Calculated LOQ ({conc_unit})", value=f"{calc_loq:.6f}")
+
+st.divider()
+
 try:
     calib_export = (
         valid_std[["Level", "Concentration", "Area"]]
@@ -477,6 +598,8 @@ try:
         target_conc=target_conc,
         t_val=t_val,
         std_purity=std_purity,
+        lod_method=lod_method,
+        extra_params=extra_params
     )
 
     st.download_button(
