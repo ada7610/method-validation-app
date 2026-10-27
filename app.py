@@ -654,7 +654,7 @@ try:
     # 🎯 Selection of LOD & LOQ Calculation Method (تم نقله ليصبح أسفل جداول العينات)
     # ==========================================
     st.subheader("🎯 LOD & LOQ Calculation Method")
-    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
+    st.info("Choose the calculation method compliant with your Validation Protocol requirements:")
 
     lod_method = st.selectbox(
         "Select Calculation Method",
