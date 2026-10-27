@@ -582,33 +582,6 @@ try:
     st.divider()
 
     # ==========================================
-    # 🎯 Selection of LOD & LOQ Calculation Method
-    # ==========================================
-    st.subheader("🎯 LOD & LOQ Calculation Method")
-    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
-
-    lod_method = st.selectbox(
-        "Select Calculation Method",
-        options=[
-            "t-Statistic & SD (Default)",
-            "Slope & SD of Intercept (Sa)",
-            "Slope & Residual SD (Sy/x)",
-            "Signal-to-Noise Ratio (S/N)",
-            "Determination on Blank",
-            "Manual / Visual / Low Recovery",
-        ],
-        index=0,
-        key="lod_method_select"
-    )
-
-    extra_params = {}
-
-    if lod_method == "t-Statistic & SD (Default)":
-        extra_params["t_val"] = st.number_input("Enter t-statistic value", value=2.5710, min_value=0.0, format="%.4f", key="t_val_input")
-
-    st.divider()
-
-    # ==========================================
     # 📋 Level 1 Inputs & Table
     # ==========================================
     st.subheader("📋 Level 1 Samples & Inputs")
@@ -674,7 +647,34 @@ try:
         st.divider()
 
     # ==========================================
-    # 🧮 Calculations & Metrics (Level 1)
+    # 🎯 Selection of LOD & LOQ Calculation Method (تم نقله ليصبح أسفل جداول العينات)
+    # ==========================================
+    st.subheader("🎯 LOD & LOQ Calculation Method")
+    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
+
+    lod_method = st.selectbox(
+        "Select Calculation Method",
+        options=[
+            "t-Statistic & SD (Default)",
+            "Slope & SD of Intercept (Sa)",
+            "Slope & Residual SD (Sy/x)",
+            "Signal-to-Noise Ratio (S/N)",
+            "Determination on Blank",
+            "Manual / Visual / Low Recovery",
+        ],
+        index=0,
+        key="lod_method_select"
+    )
+
+    extra_params = {}
+
+    if lod_method == "t-Statistic & SD (Default)":
+        extra_params["t_val"] = st.number_input("Enter t-statistic value", value=2.5710, min_value=0.0, format="%.4f", key="t_val_input")
+
+    st.divider()
+
+    # ==========================================
+    # 🧮 Calculations & Metrics (Back-end Calculations)
     # ==========================================
     calib_x = valid_std["Concentration"].values if not valid_std.empty and "Concentration" in valid_std.columns else np.array([0.0])
     calib_y = valid_std["Area"].values if not valid_std.empty and "Area" in valid_std.columns else np.array([0.0])
