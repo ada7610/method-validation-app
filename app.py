@@ -789,4 +789,14 @@ try:
             test_name, conc_unit, target_conc_l1, target_conc_l2, std_purity, lod_method, extra_params, blank_df=edited_blanks
         )
         
-        file_name =
+        file_name = f"Validation_Report_{test_name}.xlsx" if test_name else "Validation_Report.xlsx"
+        st.download_button(
+            label="💾 Download Excel File",
+            data=excel_bytes,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+except Exception as e:
+    st.error(f"حدث خطأ غير متوقع في الواجهة: {e}")
