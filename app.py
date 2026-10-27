@@ -1,4 +1,3 @@
-
 import io
 import streamlit as st
 
@@ -31,10 +30,10 @@ with st.sidebar:
     st.markdown("""
     **Developed & Designed By:**  
     👨‍🔬 **Abdulrahman Alamri**  
-    
+     
     **Specialization:**  
     🔬 Quality Control & Method Validation Specialist  
-    
+     
     ---
     *All Rights Reserved © 2026*
     """)
@@ -144,6 +143,7 @@ def generate_validation_excel(
     ref_row = last_grubbs_row + 1
     ws.merge_cells(f"M{ref_row}:N{ref_row+1}")
     ws[f"M{ref_row}"] = "Ref: Miller& Miller, Statistics and chemometrics for analytical chemistry, 6th edition."
+    
     # 3.1 Student's t-Critical Values Table (يظهر فقط مع طريقة t-Statistic & SD)
     if lod_method == "t-Statistic & SD (Default)":
         t_table_start_row = ref_row + 3
@@ -184,6 +184,7 @@ def generate_validation_excel(
         ws[f"M{t_ref_row}"] = "Ref: Student's t-distribution critical values table (95% Confidence)."
         ws[f"M{t_ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
         ws[f"M{t_ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
     ws[f"M{ref_row}"].font = Font(name="Calibri", size=9, italic=True, bold=True)
     ws[f"M{ref_row}"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -290,7 +291,7 @@ def generate_validation_excel(
     else:
         end_l1_sample_row = start_l1_sample_row
 
-    # Level 1 Statistics & Calculations
+    # Level 1 Statistics & Calculations (موضعة بعد جدول عينات المستوى الأول مباشرة)
     l1_stats_start = end_l1_sample_row + 2
     l1_mean_row = l1_stats_start
     l1_rec_row = l1_stats_start + 1
@@ -316,7 +317,7 @@ def generate_validation_excel(
         noise_val = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
         lod_formula = f"=3*{noise_val}"
         loq_formula = f"=10*{noise_val}"
-    elif lod_method == "Standard Deviation of Blanks":
+    elif lod_method == "Determination on Blank":
         blank_sd_val = extra_params.get("blank_sd", 0.0) if isinstance(extra_params, dict) else 0.0
         blank_mean_val = extra_params.get("blank_mean", 0.0) if isinstance(extra_params, dict) else 0.0
         lod_formula = f"={blank_mean_val}+(3*{blank_sd_val})"
@@ -501,15 +502,15 @@ def generate_validation_excel(
             if u_name in ["u combiend", "U expanded", "U%"]:
                 ws[f"H{r_num}"].font = font_bold
                 ws[f"I{r_num}"].font = font_bold
-# # 📌 Dynamic Footer References (Bottom of File)
+
+    # 📌 Dynamic Footer References (Bottom of File)
     references_dict = {
         "t-Statistic & SD (Default)": "VICH GL49(R) / USP Validation Protocol",
-        "The linearity study: Slope & SD of Intercept (Sa)": "ICH Q2(R1) / ICH Q2(R2) Validation of Analytical Procedures",
+        "Slope & SD of Intercept (Sa)": "ICH Q2(R1) / ICH Q2(R2) Validation of Analytical Procedures",
         "Slope & Residual SD (Sy/x)": "Miller & Miller, Statistics and Chemometrics for Analytical Chemistry, 6th ed.",
-        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur / ICH Q2(R1)",
-        "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",  # تم تحديث المسمى والمرجع
+        "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur.",
+        "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",
         "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
-    
     }
     
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
@@ -528,6 +529,7 @@ def generate_validation_excel(
     # إضافة حدود خفيفة للخلية المدمجة لتبدو مرتبة
     for col_char in ["B", "C", "D", "E", "F"]:
         ws[f"{col_char}{final_row}"].border = thin_border
+
     column_widths = {
         "A": 26, "B": 24, "C": 18, "D": 18, "E": 18,
         "F": 25, "H": 22, "I": 18, "M": 25, "N": 25
@@ -580,33 +582,6 @@ try:
         valid_std["Concentration"] = pd.to_numeric(valid_std["Concentration"], errors="coerce").fillna(0.0)
     if "Area" in valid_std.columns:
         valid_std["Area"] = pd.to_numeric(valid_std["Area"], errors="coerce").fillna(0.0)
-
-    st.divider()
-
-    # ==========================================
-    # 🎯 Selection of LOD & LOQ Calculation Method
-    # ==========================================
-    st.subheader("🎯 LOD & LOQ Calculation Method")
-    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
-
-    lod_method = st.selectbox(
-        "Select Calculation Method",
-        options=[
-            "t-Statistic & SD (Default)",
-            "Slope & SD of Intercept (Sa)",
-            "Slope & Residual SD (Sy/x)",
-            "Signal-to-Noise Ratio (S/N)",
-            "Standard Deviation of Blanks",
-            "Manual / Visual / Low Recovery",
-        ],
-        index=0,
-        key="lod_method_select"
-    )
-
-    extra_params = {}
-
-    if lod_method == "t-Statistic & SD (Default)":
-        extra_params["t_val"] = st.number_input("Enter t-statistic value", value=2.5710, min_value=0.0, format="%.4f", key="t_val_input")
 
     st.divider()
 
@@ -676,7 +651,32 @@ try:
         st.divider()
 
     # ==========================================
-    # 🧮 Calculations & Metrics (Level 1)
+    # 🎯 Selection of LOD & LOQ Calculation Method (تم نقله ليصبح أسفل جداول العينات)
+    # ==========================================
+    st.subheader("🎯 LOD & LOQ Calculation Method")
+    st.info("Choose the calculation method compliant with your ICH Q2 / USP / Validation Protocol requirements:")
+
+    lod_method = st.selectbox(
+        "Select Calculation Method",
+        options=[
+            "t-Statistic & SD (Default)",
+            "Slope & SD of Intercept (Sa)",
+            "Slope & Residual SD (Sy/x)",
+            "Signal-to-Noise Ratio (S/N)",
+            "Determination on Blank",
+            "Manual / Visual / Low Recovery",
+        ],
+        index=0,
+        key="lod_method_select"
+    )
+
+    extra_params = {}
+
+    if lod_method == "t-Statistic & SD (Default)":
+        extra_params["t_val"] = st.number_input("Enter t-statistic value", value=2.5710, min_value=0.0, format="%.4f", key="t_val_input")
+
+    # ==========================================
+    # 🧮 Calculations & Metrics (Back-end Calculations)
     # ==========================================
     calib_x = valid_std["Concentration"].values if not valid_std.empty and "Concentration" in valid_std.columns else np.array([0.0])
     calib_y = valid_std["Area"].values if not valid_std.empty and "Area" in valid_std.columns else np.array([0.0])
@@ -718,84 +718,30 @@ try:
             "Baseline Noise Level", value=1.0000, min_value=0.0001, format="%.6f", key="noise_input",
             help="LOD will be 3 × Noise, LOQ will be 10 × Noise"
         )
-    elif lod_method == "Standard Deviation of Blanks":
+    elif lod_method == "Determination on Blank":
         col_b1, col_b2 = st.columns(2)
         with col_b1:
             extra_params["blank_mean"] = st.number_input("Mean of Blank Samples", value=0.0000, format="%.6f", key="blank_mean_input")
         with col_b2:
             extra_params["blank_sd"] = st.number_input("Standard Deviation of Blanks (s_blank)", value=0.0000, min_value=0.0, format="%.6f", key="blank_sd_input")
-    elif lod_method == "Manual / Visual / Low Recovery":
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            extra_params["manual_lod"] = st.number_input("Manual / Visual LOD Value", value=0.0000, min_value=0.0, format="%.6f", key="manual_lod_input")
-        with col_m2:
-            extra_params["manual_loq"] = st.number_input("Manual / Visual LOQ Value", value=0.0000, min_value=0.0, format="%.6f", key="manual_loq_input")
-
-    sample_concs_l1 = edited_samples_l1["Concentration"].values if not edited_samples_l1.empty and "Concentration" in edited_samples_l1.columns else np.array([0.0])
-    sample_sd_l1 = np.std(sample_concs_l1, ddof=1) if len(sample_concs_l1) > 1 else 0.0
-
-    if lod_method == "t-Statistic & SD (Default)":
-        t_val_val = extra_params.get("t_val", 2.571) if isinstance(extra_params, dict) else 2.571
-        calc_lod = t_val_val * sample_sd_l1
-        calc_loq = 10 * sample_sd_l1
-    elif lod_method == "Slope & SD of Intercept (Sa)":
-        calc_lod = (3.3 * sa_auto) / slope if slope != 0 else 0
-        calc_loq = (10 * sa_auto) / slope if slope != 0 else 0
-    elif lod_method == "Slope & Residual SD (Sy/x)":
-        calc_lod = (3.3 * syx_auto) / slope if slope != 0 else 0
-        calc_loq = (10 * syx_auto) / slope if slope != 0 else 0
-    elif lod_method == "Signal-to-Noise Ratio (S/N)":
-        noise = extra_params.get("noise", 1.0) if isinstance(extra_params, dict) else 1.0
-        calc_lod = 3 * noise
-        calc_loq = 10 * noise
-    elif lod_method == "Standard Deviation of Blanks":
-        calc_lod = extra_params.get("blank_mean", 0.0) + (3 * extra_params.get("blank_sd", 0.0)) if isinstance(extra_params, dict) else 0.0
-        calc_loq = extra_params.get("blank_mean", 0.0) + (10 * extra_params.get("blank_sd", 0.0)) if isinstance(extra_params, dict) else 0.0
-    else:
-        calc_lod = extra_params.get("manual_lod", 0.0) if isinstance(extra_params, dict) else 0.0
-        calc_loq = extra_params.get("manual_loq", 0.0) if isinstance(extra_params, dict) else 0.0
-
-    col_lod, col_loq = st.columns(2)
-    with col_lod:
-        st.metric(label=f"Calculated LOD ({conc_unit})", value=f"{calc_lod:.6f}")
-    with col_loq:
-        st.metric(label=f"Calculated LOQ ({conc_unit})", value=f"{calc_loq:.6f}")
 
     st.divider()
 
-    try:
-        calib_export = (
-            valid_std[["Level", "Concentration", "Area"]]
-            if valid_std is not None and not valid_std.empty and "Level" in valid_std.columns
-            else pd.DataFrame(columns=["Level", "Concentration", "Area"])
+    # Generate Excel Report Button
+    if st.button("📥 Generate Validation Excel Report", type="primary", use_container_width=True):
+        excel_bytes = generate_validation_excel(
+            valid_std, edited_samples_l1, edited_samples_l2, has_level2,
+            test_name, conc_unit, target_conc_l1, target_conc_l2, std_purity, lod_method, extra_params
         )
-
-        excel_file = generate_validation_excel(
-            calib_df=calib_export,
-            level1_df=edited_samples_l1,
-            level2_df=edited_samples_l2,
-            has_level2=has_level2,
-            test_title=test_name,
-            unit_str=conc_unit,
-            target_conc_l1=target_conc_l1,
-            target_conc_l2=target_conc_l2,
-            std_purity=std_purity,
-            lod_method=lod_method,
-            extra_params=extra_params
-        )
-
+        
+        file_name = f"Validation_Report_{test_name}.xlsx" if test_name else "Validation_Report.xlsx"
         st.download_button(
-            label="📥 Download Final Validation Excel Report",
-            data=excel_file,
-            file_name="Method_Validation_Report.xlsx",
+            label="💾 Download Excel File",
+            data=excel_bytes,
+            file_name=file_name,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            use_container_width=True
         )
-    except Exception as e:
-        st.error(f"An error occurred while generating the Excel file: {e}")
 
-except Exception as app_err:
-    st.error(f"⚠️ Application Crash Prevented: {app_err}")
-
-st.caption("---")
-st.caption("Developed with ❤️ by **Abdulrahman Alamri** | All Rights Reserved © 2026")
+except Exception as e:
+    st.error(f"حدث خطأ غير متوقع في الواجهة: {e}")
