@@ -509,7 +509,7 @@ def generate_validation_excel(
         "Signal-to-Noise Ratio (S/N)": "USP General Chapter <1225> & Ph. Eur / ICH Q2(R1)",
         "Determination on Blank": "AOAC / Codex Alimentarius Guidelines",  # تم تحديث المسمى والمرجع
         "Manual / Visual / Low Recovery": "ICH Q2(R1) / FDA Guidance for Industry"
-    }
+    
     }
     
     current_ref = references_dict.get(lod_method, "ICH Q2 (R1) / USP Validation Protocol")
